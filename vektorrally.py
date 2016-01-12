@@ -95,27 +95,39 @@ def main():
             return False
         if intersects(p, q, line[0], line[1]).any():
             op = orient(line[0], line[1], p)
-            oq = orient(line[0], line[1], p)
+            oq = orient(line[0], line[1], q)
             if op < oq:
                 return False
+        return True
 
     def win(p, q):
+        if (p == q).all():
+            return False
+        if intersects(p, q, line[0], line[1]).any():
+            op = orient(line[0], line[1], p)
+            oq = orient(line[0], line[1], q)
+            if op < oq == 1:
+                return True
+        return False
 
     p, q = line
     i_x, i_y = (p + q) / 2
     initial = np.array([i_x, i_y, 0, 0])
     bfs = [initial]
-    visited = set([initial])
+    parent = {initial: initial}
     i = 0
     while i < len(bfs):
         u = bfs[i][:2]
         px, py, vx, vy = bfs[i]
+        if win(parent[bfs[i]][:2], bfs[i][:2]):
+            print(u)
+            break
         i += 1
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
                 v = np.array([px + vx + dx, py + vy + dy, vx + dx, vy + dy])
-                if v not in visited and valid(u, v[:2]):
-                    visited.add(v)
+                if v not in parent and valid(u, v[:2]):
+                    parent[v] = bfs[i]
                     bfs.append(v)
 
 
