@@ -78,27 +78,37 @@ def main():
         return res.reshape(s1 + s2)
 
     def valid(p, q):
-        if p.pos == q.pos:
-            return True
-        r = intersects(edge_p, edge_q, p.pos, q.pos)
-        if r.any():
-            return False
-        if intersects(p.pos, q.pos, line[0], line[1]):
-            op = orient(line[0], line[1], p.pos)
-            oq = orient(line[0], line[1], q.pos)
-            if op >= oq:
-                return False
-        return True
+        p, q = np.asarray(p), np.asarray(q)
+        assert p.shape == q.shape
+        if p.shape == ():
+            return valid([p], [q])[0]
+        i = intersects(p, q, line[0], line[1])
+        op = orient(line[0], line[1], p)
+        oq = orient(line[0], line[1], q)
+
+        r = np.ones(p.shape, dtype=np.bool)
+        r[i & (op >= oq)] = False
+
+        i2 = intersects(edge_p, edge_q, p, q)
+        i2 = i2.any(axis=tuple(range(edge_p.ndim)))
+        r[i2] = False
+        return r
 
     def win(p, q):
-        if p == q:
-            return False
-        if intersects(p, q, line[0], line[1]).any():
-            op = orient(line[0], line[1], p)
-            oq = orient(line[0], line[1], q)
-            if -1 == op < oq:
-                return True
-        return False
+        p, q = np.asarray(p), np.asarray(q)
+        assert p.shape == q.shape
+        if p.shape == ():
+            return win([p], [q])[0]
+
+        r = np.zeros(p.shape, dtype=np.bool)
+
+        i = intersects(p, q, line[0], line[1])
+        op = orient(line[0], line[1], p)
+        oq = orient(line[0], line[1], q)
+        r[i & (-1 == op) & (op < oq)] = True
+
+        r[p == q] = False
+        return r
 
     p, q = line
     initial = State((p + q) / 2, 0j)
@@ -117,7 +127,7 @@ def main():
             break
         for d in (-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j):
             v = State(u.pos + u.vel + args.grid * d, u.vel + args.grid * d)
-            if v not in parent and valid(u, v):
+            if v not in parent and valid(u.pos, v.pos):
                 parent[v] = u
                 bfs.append(v)
     if winner:
