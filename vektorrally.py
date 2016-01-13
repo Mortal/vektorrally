@@ -117,13 +117,14 @@ def intersects(p1, q1, p2, q2):
     o3 = orient(p2, q2, p1).T
     o4 = orient(p2, q2, q1).T
 
-    res = (o1 != o2) & (o3 != o4)
-    res = res.reshape(n1, n2)
     o1, o2, o3, o4 = np.asarray((o1, o2, o3, o4)).reshape(4, n1, n2)
-    res[o1 == 0] = on_segment(p1, p2, q1)[o1 == 0]
-    res[o2 == 0] = on_segment(p1, q2, q1)[o2 == 0]
-    res[o3 == 0] = on_segment(p2, p1, q2).T[o3 == 0]
-    res[o4 == 0] = on_segment(p2, q1, q2).T[o4 == 0]
+    special = (o1 == 0) | (o2 == 0) | (o3 == 0) | (o4 == 0)
+    res = np.zeros((n1, n2), dtype=np.bool)
+    res[o1 == 0] |= on_segment(p1, p2, q1)[o1 == 0]
+    res[o2 == 0] |= on_segment(p1, q2, q1)[o2 == 0]
+    res[o3 == 0] |= on_segment(p2, p1, q2).T[o3 == 0]
+    res[o4 == 0] |= on_segment(p2, q1, q2).T[o4 == 0]
+    res[~special] = ((o1 != o2) & (o3 != o4))[~special]
     return res.reshape(s1 + s2)
 
 
