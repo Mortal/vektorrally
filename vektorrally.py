@@ -32,50 +32,58 @@ def main():
     def on_segment(p, q, r):
         """Given collinear p, q, r, does q lie on pr?"""
         p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
+        s1, s2 = p.shape, q.shape
+        n1, n2 = np.product(s1), np.product(s2)
+        assert p.shape == r.shape
+        p, r = p.reshape(n1, 1), r.reshape(n1, 1)
+        q = q.reshape(1, n2)
         c1 = np.minimum(p.real, r.real) <= q.real
         c2 = q.real <= np.maximum(p.real, r.real)
         c3 = np.minimum(p.imag, r.imag) <= q.imag
         c4 = q.imag <= np.maximum(p.imag, r.imag)
-        return c1 & c2 & c3 & c4
+        return (c1 & c2 & c3 & c4).reshape(s1 + s2)
 
     def orient(p, q, r):
         """1 => pqr is left turn"""
         p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
-        pq = q - p
-        qr = r - q
+        s1, s2 = p.shape, r.shape
+        n1, n2 = np.product(s1), np.product(s2)
+        assert p.shape == q.shape
+        pq = (q - p).reshape((n1, 1))
+        qr = r.reshape((1, n2)) - q.reshape((n1, 1))
         # return np.sign((qr / pq).imag)
-        return np.sign(pq.imag * qr.real - pq.real * qr.imag)
+        return np.sign(pq.imag * qr.real - pq.real * qr.imag).reshape(s1 + s2)
 
     def intersects(p1, q1, p2, q2):
         p1, q1 = np.asarray(p1), np.asarray(q1)
         p2, q2 = np.asarray(p2), np.asarray(q2)
-        assert p1.shape == q1.shape == p2.shape == q2.shape, '%s %s' % (p1.shape, q2.shape)
+        s1, s2 = p1.shape, p2.shape
+        n1, n2 = np.product(s1), np.product(s2)
+        assert p1.shape == q1.shape
+        assert p2.shape == q2.shape
+        p1, q1 = p1.ravel(), q1.ravel()
+        p2, q2 = p2.ravel(), q2.ravel()
         o1 = orient(p1, q1, p2)
         o2 = orient(p1, q1, q2)
-        o3 = orient(p2, q2, p1)
-        o4 = orient(p2, q2, q1)
+        o3 = orient(p2, q2, p1).T
+        o4 = orient(p2, q2, q1).T
 
         res = (o1 != o2) & (o3 != o4)
-        orig_shape = res.shape
-        s = res.shape or (1,)
-        res = res.reshape(s)
-        o1, o2, o3, o4 = np.asarray((o1, o2, o3, o4)).reshape((4,) + s)
-        res[o1 == 0] = on_segment(p1, p2, q1).reshape(s)[o1 == 0]
-        res[o2 == 0] = on_segment(p1, q2, q1).reshape(s)[o2 == 0]
-        res[o3 == 0] = on_segment(p2, p1, q2).reshape(s)[o3 == 0]
-        res[o4 == 0] = on_segment(p2, q1, q2).reshape(s)[o4 == 0]
-        return res.reshape(s)
+        res = res.reshape(n1, n2)
+        o1, o2, o3, o4 = np.asarray((o1, o2, o3, o4)).reshape(4, n1, n2)
+        res[o1 == 0] = on_segment(p1, p2, q1).reshape(n1, n2)[o1 == 0]
+        res[o2 == 0] = on_segment(p1, q2, q1).reshape(n1, n2)[o2 == 0]
+        res[o3 == 0] = on_segment(p2, p1, q2).reshape(n1, n2)[o3 == 0]
+        res[o4 == 0] = on_segment(p2, q1, q2).reshape(n1, n2)[o4 == 0]
+        return res.reshape(s1 + s2)
 
     def valid(p, q):
         if p.pos == q.pos:
             return True
-        N = len(edge_p)
-        pp = np.tile(p.pos, (N,))
-        qq = np.tile(q.pos, (N,))
-        r = intersects(edge_p, edge_q, pp, qq)
+        r = intersects(edge_p, edge_q, p.pos, q.pos)
         if r.any():
             return False
-        if intersects(p.pos, q.pos, line[0], line[1]).any():
+        if intersects(p.pos, q.pos, line[0], line[1]):
             op = orient(line[0], line[1], p.pos)
             oq = orient(line[0], line[1], q.pos)
             if op >= oq:
