@@ -43,7 +43,6 @@ def orient(p, q, r):
     assert p.shape == q.shape
     pq = (q - p).reshape((n1, 1))
     qr = r.reshape((1, n2)) - q.reshape((n1, 1))
-    # return np.sign((qr / pq).imag)
     return np.sign(pq.imag * qr.real - pq.real * qr.imag).reshape(s1 + s2)
 
 
