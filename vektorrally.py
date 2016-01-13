@@ -85,11 +85,16 @@ def main():
         output_filename = (
             '%s-solved%s' % tuple(os.path.splitext(args.filename)))
 
-    ipe_page = ipe.file.parse(args.filename)
-    polygons = ipe_page.polygons
-    if len(ipe_page.lines) != 1:
+    ipe_doc = ipe.file.parse(args.filename)
+    if len(ipe_doc.pages) != 1:
+        raise Exception("Ipe file should have exactly one page")
+    ipe_page = ipe_doc.pages[0]
+
+    polygons = list(ipe_page.polygons)
+    lines = list(ipe_page.lines)
+    if len(lines) != 1:
         raise Exception("Ipe file should have exactly one line segment")
-    line = ipe_page.lines[0].endpoints()
+    line = lines[0].endpoints()
 
     edges = [e for p in polygons for e in p.get_edges()]
     edge_p, edge_q = map(np.asarray, zip(*edges))
@@ -178,7 +183,7 @@ def main():
             u = parent[u]
         points.reverse()
         ipe_page.add_shape(Shape.make_polyline(points), stroke='red')
-        ipe_page.save(output_filename)
+        ipe_doc.save(output_filename)
     else:
         print("Could not solve")
         for u, v in sorted(parent.items())[:100]:
