@@ -13,6 +13,27 @@ State = namedtuple('State', 'pos vel'.split())
 
 
 def unique_pairs(x1, x2):
+    """Return the entries that are unique when taken together.
+
+    Parameters
+    ----------
+    x1, x2 : (N,) array_like
+        Two arrays from which unique pairs must be found
+
+    Returns
+    -------
+    y1, y2 : ndarray
+        Arrays such that each pair (x1[i], x2[i]) occurs as (y1[j], y2[j]),
+        and all (y1[i], y2[i]) are distinct.
+
+    Example
+    -------
+    >>> unique([0, 0, 2, 2, 0],
+    ...        [0, 1, 2, 2, 1])  # doctest: +NORMALIZE_WHITESPACE
+    (array([0, 0, 2]),
+     array([0, 1, 2]))
+    """
+
     x1, x2 = np.asarray(x1), np.asarray(x2)
     if len(x1) == 0:
         return x1, x2
