@@ -6,6 +6,8 @@ from xml.etree import ElementTree
 
 import numpy as np
 
+import ipe.file
+
 
 def strs_array(iterable):
     return np.array([float(x) for x in iterable])
@@ -19,45 +21,20 @@ def main():
 
     output_filename = '%s-solved%s' % tuple(os.path.splitext(args.filename))
 
-    tree = ElementTree.parse(args.filename)
-    root = tree.getroot()
-    page = root.find('page')
-    boundaries = []
-    line = None
-    verify = []
-    for p in page.findall('path'):
-        path = ' '.join(p.text.split())
-        if p.get('stroke') == 'green':
-            # Verify
-            mo = re.match('\S+ \S+ m( \S+ \S+ l)*', path)
-            if mo is None:
-                raise Exception("Not a polygonal line")
-            data = path.split()
-            xs = strs_array(data[::3])
-            ys = strs_array(data[1::3])
-            verify.append((xs, ys))
-        elif path.endswith(' l'):
-            # Line
-            mo = re.match(r'^(\S+) (\S+) m (\S+) (\S+) l$', path)
-            if mo is None:
-                raise Exception("Not a line")
-            p1 = strs_array([mo.group(1), mo.group(2)])
-            q1 = strs_array([mo.group(3), mo.group(4)])
-            line = [p1, q1]
-        elif path.endswith(' h'):
-            # Polygon
-            mo = re.match('(\S+ \S+ m (\S+ \S+ l )*)h', path)
-            if mo is None:
-                raise Exception("Not a polygon")
-            data = mo.group(1).split()
-            xs = strs_array(data[::3])
-            ys = strs_array(data[1::3])
-            boundaries.append((xs, ys))
+    ipe_page = ipe.file.parse(args.filename)
+    polygons = ipe_page.polygons
+    if len(ipe_page.lines) != 1:
+        raise Exception("Ipe file should have exactly one line segment")
+    line = ipe_page.lines[0].endpoints()
+    line = np.array([[line[0].real, line[0].imag],
+                     [line[1].real, line[1].imag]])
 
-    edge_x1 = np.concatenate([b[0] for b in boundaries])
-    edge_x2 = np.concatenate([np.roll(b[0], -1) for b in boundaries])
-    edge_y1 = np.concatenate([b[1] for b in boundaries])
-    edge_y2 = np.concatenate([np.roll(b[1], -1) for b in boundaries])
+    edges = [e for p in polygons for e in p.get_edges()]
+    edge_p, edge_q = map(np.asarray, zip(*edges))
+    edge_x1 = edge_p.real
+    edge_x2 = edge_q.real
+    edge_y1 = edge_p.imag
+    edge_y2 = edge_q.imag
     edge_p = np.array([edge_x1, edge_y1]).T
     edge_q = np.array([edge_x2, edge_y2]).T
 
@@ -142,28 +119,9 @@ def main():
                 return True
         return False
 
-    for xs, ys in verify:
-        vx = np.diff(xs)
-        vy = np.diff(ys)
-        ax = np.diff(vx)
-        ay = np.diff(vy)
-        print(orient(line[0], line[1], [xs[0], ys[0]]))
-        print(orient(line[0], line[1], [xs[1], ys[1]]))
-        if not np.all((-args.grid <= ax) & (ax <= args.grid)):
-            raise Exception("Bad ax %s %s" % (ax.min(), ax.max()))
-        if not np.all((-args.grid <= ay) & (ay <= args.grid)):
-            raise Exception("Bad ay %s %s" % (ay.min(), ay.max()))
-        for i in range(len(vx)):
-            if not valid([xs[i], ys[i]], [xs[i+1], ys[i+1]]):
-                raise Exception("Invalid %d" % i)
-        if not win([xs[-2], ys[-2]], [xs[-1], ys[-1]]):
-            raise Exception("Not win")
-    if verify:
-        return
-
     p, q = line
-    i_x, i_y = (p + q) / 2
-    initial = (i_x, i_y, 0, 0)
+    initial_point = ((p + q) / 2).tolist()[0]
+    initial = (initial_point.real, initial_point.imag, 0, 0)
     bfs = [initial]
     parent = {initial: initial}
     i = 0

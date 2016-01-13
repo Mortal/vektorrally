@@ -35,8 +35,34 @@ class Curve:
         xp, yp = self.matrix.transform(x, y)
         return complex(xp, yp)
 
+    def is_line_segment(self):
+        return not self.closed and len(self.edges) == 1
 
-def load_curve(data, matrix_data=None):
+    def is_polygon(self):
+        return self.closed
+
+    def endpoints(self):
+        return self.transform_edge(self.edges[0])
+
+
+class Shape:
+    def __init__(self, curves):
+        self.curves = curves
+
+    def is_line_segment(self):
+        return len(self.curves) == 1 and self.curves[0].is_line_segment()
+
+    def is_polygon(self):
+        return len(self.curves) == 1 and self.curves[0].is_polygon()
+
+    def get_edges(self):
+        return [e for c in self.curves for e in c.get_edges()]
+
+    def endpoints(self):
+        return self.curves[0].endpoints()
+
+
+def load_shape(data, matrix_data=None):
     """Load Ipe shape data from a string.
 
     Mirrors ipe/src/ipelib/ipeshape.cpp Shape::load.
@@ -44,7 +70,7 @@ def load_curve(data, matrix_data=None):
 
     matrix = None if matrix_data is None else load_matrix(matrix_data)
 
-    shape = []  # list of Curve
+    curves = []
     args = []  # list of coordinates
     subpath = None
     current_position = 0j
@@ -65,7 +91,7 @@ def load_curve(data, matrix_data=None):
                 raise ValueError()
             subpath = Curve()
             subpath.matrix = matrix
-            shape.append(subpath)
+            curves.append(subpath)
             current_position = pop_point()
         elif tok == "l":
             if len(args) != 2:
@@ -79,8 +105,8 @@ def load_curve(data, matrix_data=None):
             # Must be a number
             args.append(float(tok))
 
-    if len(shape) == 0:
+    if len(curves) == 0:
         raise ValueError()
-    if any(len(c.edges) == 0 for c in shape):
+    if any(len(c.edges) == 0 for c in curves):
         raise ValueError()
-    return shape
+    return Shape(curves)
