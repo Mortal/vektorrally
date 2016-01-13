@@ -12,7 +12,7 @@ from ipe.shape import Shape
 State = namedtuple('State', 'pos vel'.split())
 
 
-def unique(xs, ys):
+def unique_pairs(xs, ys):
     if len(xs) == 0:
         return xs, ys
     indices = np.lexsort((ys, xs))
@@ -181,7 +181,7 @@ def main():
         print("%s visited" % len(parent))
         bfs_pos = v_pos[m1 & m2].ravel()
         bfs_vel = v_vel[m1 & m2].ravel()
-        bfs_pos, bfs_vel = unique(bfs_pos, bfs_vel)
+        bfs_pos, bfs_vel = unique_pairs(bfs_pos, bfs_vel)
 
     if winner:
         points = []
