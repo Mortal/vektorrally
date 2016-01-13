@@ -13,6 +13,8 @@ State = namedtuple('State', 'pos vel'.split())
 
 
 def unique(xs, ys):
+    if len(xs) == 0:
+        return xs, ys
     indices = np.lexsort((ys, xs))
     xs = xs[indices]
     ys = ys[indices]
