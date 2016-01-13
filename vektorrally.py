@@ -13,6 +13,7 @@ State = namedtuple('State', 'pos vel'.split())
 
 
 def unique_pairs(x1, x2):
+    x1, x2 = np.asarray(x1), np.asarray(x2)
     if len(x1) == 0:
         return x1, x2
     indices = np.lexsort((x2, x1))
