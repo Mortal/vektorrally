@@ -28,8 +28,8 @@ def unique_pairs(x1, x2):
 
     Example
     -------
-    >>> unique([0, 0, 2, 2, 0],
-    ...        [0, 1, 2, 2, 1])  # doctest: +NORMALIZE_WHITESPACE
+    >>> unique_pairs([0, 0, 2, 2, 0],
+    ...              [0, 1, 2, 2, 1])  # doctest: +NORMALIZE_WHITESPACE
     (array([0, 0, 2]),
      array([0, 1, 2]))
     """
