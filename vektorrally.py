@@ -45,7 +45,20 @@ def unique_pairs(x1, x2):
 
 
 def on_segment(p, q, r):
-    """Given collinear p, q, r, does q lie on pr?"""
+    """Given collinear p, q, r, does q lie on pr?
+
+    Parameters
+    ----------
+    p, r : (N,) complex array_like
+    q : (M,) complex array_like
+
+    Returns
+    -------
+    mask : (N, M) bool ndarray
+        mask[i, j] is True if q[j] is a convex combination of p[i] and r[i]
+        under the assumption that q[j] is an affine combination of them.
+    """
+
     p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
     s1, s2 = p.shape, q.shape
     n1, n2 = np.product(s1), np.product(s2)
