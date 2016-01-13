@@ -101,12 +101,15 @@ class Shape:
         return ''.join(c.to_ipe_path() for c in self.curves)
 
 
-def load_shape(data, matrix_data=None):
+def load_shape(data, attrib=None):
     """Load Ipe shape data from a string.
 
     Mirrors ipe/src/ipelib/ipeshape.cpp Shape::load.
     """
 
+    if attrib is None:
+        attrib = dict()
+    matrix_data = attrib.get('matrix')
     matrix = None if matrix_data is None else load_matrix(matrix_data)
 
     curves = []

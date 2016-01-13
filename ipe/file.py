@@ -4,45 +4,59 @@ import ipe.shape
 
 
 class IpePage:
-    def __init__(self, tree):
-        self.root = tree.getroot()
-        page = self.page
-        self.shapes = []
-        for child in page:
-            if child.tag in ('layer', 'view'):
-                continue
-            elif child.tag == 'use':
-                # marker (skip)
-                continue
-            elif child.tag == 'image':
-                # image (skip)
-                continue
-            elif child.tag == 'path':
-                self.shapes.append(
-                    ipe.shape.load_shape(child.text, child.get('matrix')))
-            else:
-                raise Exception("Unknown tag %s" % (child,))
+    def __init__(self, page):
+        # ipeiml.cpp ImlParser::parsePage
+        self.page = page
+        self.objects = []
 
-        self.lines = []
-        self.polygons = []
-        for s in self.shapes:
-            if s.is_line_segment():
-                self.lines.append(s)
-            elif s.is_polygon():
-                self.polygons.append(s)
+        for child in page:
+            if child.tag == 'notes':
+                pass
+            elif child.tag == 'layer':
+                pass
+            elif child.tag == 'view':
+                pass
+            else:
+                # ipefactory.cpp createObject
+                self.parse_object(child)
 
     @property
-    def page(self):
-        pages = self.root.findall('page')
-        assert pages, 'root must contain exactly one <page>'
-        if len(pages) > 1:
-            raise Exception("Multiple pages")
-        return pages[0]
+    def lines(self):
+        return (o for o in self.objects if o.is_line_segment())
+
+    @property
+    def polygons(self):
+        return (o for o in self.objects if o.is_polygon())
+
+    def parse_object(self, child):
+        if child.tag == 'path':
+            self.objects.append(
+                ipe.shape.load_shape(child.text, child.attrib))
+        elif child.tag == 'text':
+            return  # skip
+        elif child.tag == 'image':
+            return  # skip
+        elif child.tag == 'use':
+            return  # skip
+        elif child.tag == 'group':
+            for c in child:
+                self.parse_object(c)
+        else:
+            raise Exception("Unknown tag %s" % (child,))
 
     def add_shape(self, shape, **kwargs):
         path = ElementTree.SubElement(self.page, 'path', **kwargs)
         path.text = '\n' + shape.to_ipe_path()
         path.tail = '\n'
+
+
+class IpeDoc:
+    def __init__(self, tree):
+        self.root = tree.getroot()
+        self.pages = [
+            IpePage(el)
+            for el in self.root.findall('page')
+        ]
 
     def save(self, filename):
         self.root.set('creator', 'vektorrally.py')
@@ -54,4 +68,4 @@ class IpePage:
 
 
 def parse(filename):
-    return IpePage(ElementTree.parse(filename))
+    return IpeDoc(ElementTree.parse(filename))
