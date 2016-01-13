@@ -1,14 +1,15 @@
 import os
 import argparse
 
+from collections import namedtuple
+
 import numpy as np
 
 import ipe.file
 from ipe.shape import Shape
 
 
-def strs_array(iterable):
-    return np.array([float(x) for x in iterable])
+State = namedtuple('State', 'pos vel'.split())
 
 
 def main():
@@ -24,91 +25,65 @@ def main():
     if len(ipe_page.lines) != 1:
         raise Exception("Ipe file should have exactly one line segment")
     line = ipe_page.lines[0].endpoints()
-    line = np.array([[line[0].real, line[0].imag],
-                     [line[1].real, line[1].imag]])
 
     edges = [e for p in polygons for e in p.get_edges()]
     edge_p, edge_q = map(np.asarray, zip(*edges))
-    edge_x1 = edge_p.real
-    edge_x2 = edge_q.real
-    edge_y1 = edge_p.imag
-    edge_y2 = edge_q.imag
-    edge_p = np.array([edge_x1, edge_y1]).T
-    edge_q = np.array([edge_x2, edge_y2]).T
 
     def on_segment(p, q, r):
         """Given collinear p, q, r, does q lie on pr?"""
         p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
-        s, d = p.shape[:-1], p.shape[-1]
-        assert s == q.shape[:-1] == r.shape[:-1]
-        assert d == q.shape[-1] == r.shape[-1]
-        # p, q, r = p.reshape(-1, d), q.reshape(-1, d), r.reshape(-1, d)
-
-        c1, c2 = np.minimum(p, r) <= q, q <= np.maximum(p, r)
-        return (c1 & c2).all(axis=-1)  # .reshape(s)
+        c1 = np.minimum(p.real, r.real) <= q.real
+        c2 = q.real <= np.maximum(p.real, r.real)
+        c3 = np.minimum(p.imag, r.imag) <= q.imag
+        c4 = q.imag <= np.maximum(p.imag, r.imag)
+        return c1 & c2 & c3 & c4
 
     def orient(p, q, r):
         """1 => pqr is left turn"""
         p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
-        s, d = p.shape[:-1], p.shape[-1]
-        assert s == q.shape[:-1] == r.shape[:-1]
-        assert 2 == d == q.shape[-1] == r.shape[-1]
-
         pq = q - p
         qr = r - q
-        val = pq[..., 1] * qr[..., 0] - pq[..., 0] * qr[..., 1]
-        return np.sign(val)
+        # return np.sign((qr / pq).imag)
+        return np.sign(pq.imag * qr.real - pq.real * qr.imag)
 
     def intersects(p1, q1, p2, q2):
         p1, q1 = np.asarray(p1), np.asarray(q1)
         p2, q2 = np.asarray(p2), np.asarray(q2)
-        s, d = p1.shape[:-1], p1.shape[-1]
-        assert s == q1.shape[:-1] == p2.shape[:-1] == q2.shape[:-1]
-        assert 2 == d == q1.shape[-1] == p2.shape[-1] == q2.shape[-1]
+        assert p1.shape == q1.shape == p2.shape == q2.shape, '%s %s' % (p1.shape, q2.shape)
         o1 = orient(p1, q1, p2)
         o2 = orient(p1, q1, q2)
         o3 = orient(p2, q2, p1)
         o4 = orient(p2, q2, q1)
 
         res = (o1 != o2) & (o3 != o4)
-        s_ = (1,) if s == () else s
-        res = res.reshape(s_)
-        o1, o2, o3, o4 = np.asarray((o1, o2, o3, o4)).reshape((4,) + s_)
-        res[o1 == 0] = on_segment(p1, p2, q1).reshape(s_)[o1 == 0]
-        res[o2 == 0] = on_segment(p1, q2, q1).reshape(s_)[o2 == 0]
-        res[o3 == 0] = on_segment(p2, p1, q2).reshape(s_)[o3 == 0]
-        res[o4 == 0] = on_segment(p2, q1, q2).reshape(s_)[o4 == 0]
-
+        orig_shape = res.shape
+        s = res.shape or (1,)
+        res = res.reshape(s)
+        o1, o2, o3, o4 = np.asarray((o1, o2, o3, o4)).reshape((4,) + s)
+        res[o1 == 0] = on_segment(p1, p2, q1).reshape(s)[o1 == 0]
+        res[o2 == 0] = on_segment(p1, q2, q1).reshape(s)[o2 == 0]
+        res[o3 == 0] = on_segment(p2, p1, q2).reshape(s)[o3 == 0]
+        res[o4 == 0] = on_segment(p2, q1, q2).reshape(s)[o4 == 0]
         return res.reshape(s)
 
-    def intersects_edges(p, q):
-        N = len(edge_p)
-        r = intersects(edge_p, edge_q, np.tile(p, (N, 1)), np.tile(q, (N, 1)))
-        print(r.shape)
-        print(r.nonzero()[0])
-        return r
-
     def valid(p, q):
-        p = np.asarray(p)[:2]
-        q = np.asarray(q)[:2]
-        if (p == q).all():
+        if p.pos == q.pos:
             return True
         N = len(edge_p)
-        pp = np.tile(p, (N, 1))
-        qq = np.tile(q, (N, 1))
+        pp = np.tile(p.pos, (N,))
+        qq = np.tile(q.pos, (N,))
         r = intersects(edge_p, edge_q, pp, qq)
         if r.any():
             return False
-        if intersects(p, q, line[0], line[1]).any():
-            op = orient(line[0], line[1], p)
-            oq = orient(line[0], line[1], q)
+        if intersects(p.pos, q.pos, line[0], line[1]).any():
+            op = orient(line[0], line[1], p.pos)
+            oq = orient(line[0], line[1], q.pos)
             if op >= oq:
                 return False
         return True
 
     def win(p, q):
-        p, q = np.asarray(p)[:2], np.asarray(q)[:2]
-        if (p == q).all():
+        if p == q:
             return False
         if intersects(p, q, line[0], line[1]).any():
             op = orient(line[0], line[1], p)
@@ -118,9 +93,7 @@ def main():
         return False
 
     p, q = line
-    initial_point = ((p + q) / 2).tolist()
-    initial = (initial_point[0], initial_point[1], 0, 0)
-    print(initial)
+    initial = State((p + q) / 2, 0j)
     bfs = [initial]
     parent = {initial: initial}
     i = 0
@@ -131,21 +104,19 @@ def main():
         if i % 100 == 0:
             print("head=%d tail=%d" % (i, len(bfs)))
         p = parent[u]
-        if win(p, u):
+        if win(p.pos, u.pos):
             winner = u
             break
-        px, py, vx, vy = u
-        for dx in (-args.grid, 0, args.grid):
-            for dy in (-args.grid, 0, args.grid):
-                v = (px + vx + dx, py + vy + dy, vx + dx, vy + dy)
-                if v not in parent and valid(u, v):
-                    parent[v] = u
-                    bfs.append(v)
+        for d in (-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j):
+            v = State(u.pos + u.vel + args.grid * d, u.vel + args.grid * d)
+            if v not in parent and valid(u, v):
+                parent[v] = u
+                bfs.append(v)
     if winner:
         points = []
         u = winner
         while True:
-            points.append(complex(u[0], u[1]))
+            points.append(u[0])
             if u == parent[u]:
                 break
             u = parent[u]

@@ -24,6 +24,8 @@ class Curve:
 
     @classmethod
     def make_polyline(cls, points):
+        if not all(isinstance(p, complex) for p in points):
+            raise TypeError(str(points))
         edges = [
             (u, v)
             for u, v in zip(points[:-1], points[1:])
