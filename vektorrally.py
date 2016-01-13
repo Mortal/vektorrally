@@ -174,6 +174,10 @@ def main():
         points.reverse()
         ipe_page.add_shape(Shape.make_polyline(points), stroke='red')
         ipe_page.save(output_filename)
+    else:
+        print("Could not solve")
+        for u, v in sorted(parent.items())[:100]:
+            print("parent(%s) = %s" % (u, v))
 
 
 if __name__ == "__main__":
