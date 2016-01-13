@@ -18,7 +18,7 @@ def unique(xs, ys):
     indices = np.lexsort((ys, xs))
     xs = xs[indices]
     ys = ys[indices]
-    diff = np.concatenate(([True], (xs[1:] != xs[:-1]) & (ys[1:] != ys[:-1])))
+    diff = np.concatenate(([True], (xs[1:] != xs[:-1]) | (ys[1:] != ys[:-1])))
     return xs[diff], ys[diff]
 
 
