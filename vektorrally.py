@@ -89,6 +89,21 @@ def orient(p, q, r):
 
 
 def intersects(p1, q1, p2, q2):
+    """Compute whether line segments intersect.
+
+    Tests intersection of each line segment p1[i],q1[i] with each line segment
+    p2[j],q2[j].
+
+    Example
+    -------
+    The line segment from (1, 0) to (5, 0) intersects all the given line
+    segments:
+    >>> intersects([1], [5],
+    ...            [1-1j, 0, 1-1j, 2-1j, 3-1j],
+    ...            [5+1j, 2, 1+1j, 2+1j, 3+0j])
+    array([[ True,  True,  True,  True,  True]], dtype=bool)
+    """
+
     p1, q1 = np.asarray(p1), np.asarray(q1)
     p2, q2 = np.asarray(p2), np.asarray(q2)
     s1, s2 = p1.shape, p2.shape
