@@ -12,6 +12,14 @@ from ipe.shape import Shape
 State = namedtuple('State', 'pos vel'.split())
 
 
+def unique(xs, ys):
+    indices = np.lexsort((ys, xs))
+    xs = xs[indices]
+    ys = ys[indices]
+    diff = np.concatenate(([True], (xs[1:] != xs[:-1]) & (ys[1:] != ys[:-1])))
+    return xs[diff], ys[diff]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--grid', '-g', type=int, default=16)
@@ -112,24 +120,45 @@ def main():
 
     p, q = line
     initial = State((p + q) / 2, 0j)
-    bfs = [initial]
+
+    bfs_pos = [initial.pos]
+    bfs_vel = [initial.vel]
     parent = {initial: initial}
-    i = 0
+
+    diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
+    diff = diff.reshape((1, -1)) * args.grid
+
     winner = None
-    while i < len(bfs):
-        u = bfs[i]
-        i += 1
-        if i % 100 == 0:
-            print("head=%d tail=%d" % (i, len(bfs)))
-        p = parent[u]
-        if win(p.pos, u.pos):
-            winner = u
+    dist = 0
+    while len(bfs_pos) > 0:
+        dist += 1
+        print(dist, len(bfs_pos))
+        p_pos = np.array(
+            [parent[State(p, v)].pos for p, v in zip(bfs_pos, bfs_vel)])
+        u_pos = np.asarray(bfs_pos).reshape((-1, 1))
+        u_vel = np.asarray(bfs_vel).reshape((-1, 1))
+        v_pos = u_pos + u_vel + diff
+        v_vel = u_vel + diff
+
+        w = win(p_pos, u_pos.ravel()).nonzero()[0]
+        if len(w) > 0:
+            winner = State(u_pos[w[0], 0], u_vel[w[0], 0])
             break
-        for d in (-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j):
-            v = State(u.pos + u.vel + args.grid * d, u.vel + args.grid * d)
-            if v not in parent and valid(u.pos, v.pos):
-                parent[v] = u
-                bfs.append(v)
+
+        m1 = np.array(
+            [[State(p, v) not in parent for p, v in zip(ps, vs)]
+             for ps, vs in zip(v_pos, v_vel)])
+        m2 = valid(np.repeat(u_pos, diff.shape[1], 1), v_pos)
+        print("%s neighbors, %s not visited, %s valid, %s" %
+              (np.product(m1.shape), m1.sum(), m2.sum(), (m1 & m2).sum()))
+        for i, j in zip(*(m1 & m2).nonzero()):
+            s = State(v_pos[i, j], v_vel[i, j])
+            parent[s] = State(u_pos[i, 0], u_vel[i, 0])
+        print("%s visited" % len(parent))
+        bfs_pos = v_pos[m1 & m2].ravel()
+        bfs_vel = v_vel[m1 & m2].ravel()
+        bfs_pos, bfs_vel = unique(bfs_pos, bfs_vel)
+
     if winner:
         points = []
         u = winner
