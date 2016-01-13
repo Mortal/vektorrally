@@ -13,10 +13,22 @@ def load_matrix(data):
 
 
 class Curve:
-    def __init__(self):
-        self.edges = []
-        self.closed = False
-        self.matrix = None
+    def __init__(self, edges=None, closed=False, matrix=None):
+        self.edges = [] if edges is None else list(edges)
+        self.closed = closed
+        self.matrix = matrix
+
+    def __repr__(self):
+        return "Curve(edges=%r, closed=%r, matrix=%r)" % (
+            self.edges, self.closed, self.matrix)
+
+    @classmethod
+    def make_polyline(cls, points):
+        edges = [
+            (u, v)
+            for u, v in zip(points[:-1], points[1:])
+        ]
+        return cls(edges)
 
     def get_edges(self):
         edges = list(self.edges)
@@ -44,10 +56,32 @@ class Curve:
     def endpoints(self):
         return self.transform_edge(self.edges[0])
 
+    def to_ipe_path(self):
+        directives = []
+        pos = None
+        for u, v in self.edges:
+            if pos is None:
+                pos = u
+                directives.append('%g %g m\n' % (u.real, u.imag))
+            if pos != u:
+                raise Exception("to_ipe_path: Edges are not connected")
+            pos = v
+            directives.append('%g %g l\n' % (v.real, v.imag))
+        if self.closed:
+            directives.append('h\n')
+        return ''.join(directives)
+
 
 class Shape:
     def __init__(self, curves):
         self.curves = curves
+
+    def __repr__(self):
+        return "Shape(%r)" % (self.curves,)
+
+    @classmethod
+    def make_polyline(cls, points):
+        return cls([Curve.make_polyline(points)])
 
     def is_line_segment(self):
         return len(self.curves) == 1 and self.curves[0].is_line_segment()
@@ -60,6 +94,9 @@ class Shape:
 
     def endpoints(self):
         return self.curves[0].endpoints()
+
+    def to_ipe_path(self):
+        return ''.join(c.to_ipe_path() for c in self.curves)
 
 
 def load_shape(data, matrix_data=None):

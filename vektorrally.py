@@ -1,12 +1,10 @@
 import os
-import re
 import argparse
-
-from xml.etree import ElementTree
 
 import numpy as np
 
 import ipe.file
+from ipe.shape import Shape
 
 
 def strs_array(iterable):
@@ -120,8 +118,9 @@ def main():
         return False
 
     p, q = line
-    initial_point = ((p + q) / 2).tolist()[0]
-    initial = (initial_point.real, initial_point.imag, 0, 0)
+    initial_point = ((p + q) / 2).tolist()
+    initial = (initial_point[0], initial_point[1], 0, 0)
+    print(initial)
     bfs = [initial]
     parent = {initial: initial}
     i = 0
@@ -143,23 +142,16 @@ def main():
                     parent[v] = u
                     bfs.append(v)
     if winner:
-        winpath = ElementTree.SubElement(page, 'path', stroke='red')
-        directives = []
+        points = []
         u = winner
         while True:
-            directives.append([u[0], u[1], 'l'])
+            points.append(complex(u[0], u[1]))
             if u == parent[u]:
                 break
             u = parent[u]
-        directives[-1][-1] = 'm'
-        directives.reverse()
-        winpath.text = (
-            '\n%s\n' % '\n'.join(' '.join(tuple(map(str, p))) for p in directives))
-        winpath.tail = '\n'
-    root.set('creator', 'vektorrally.py')
-    with open(output_filename, 'wb') as fp:
-        fp.write(b'<?xml version="1.0"?>\n<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
-        fp.write(ElementTree.tostring(root))
+        points.reverse()
+        ipe_page.add_shape(Shape.make_polyline(points), stroke='red')
+        ipe_page.save(output_filename)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,19 @@ class IpePage:
             raise Exception("Multiple pages")
         return pages[0]
 
+    def add_shape(self, shape, **kwargs):
+        path = ElementTree.SubElement(self.page, 'path', **kwargs)
+        path.text = '\n' + shape.to_ipe_path()
+        path.tail = '\n'
+
+    def save(self, filename):
+        self.root.set('creator', 'vektorrally.py')
+        with open(filename, 'wb') as fp:
+            fp.write(
+                b'<?xml version="1.0"?>\n' +
+                b'<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
+            fp.write(ElementTree.tostring(self.root))
+
 
 def parse(filename):
     return IpePage(ElementTree.parse(filename))
