@@ -1,4 +1,6 @@
+import os
 import re
+import argparse
 
 from xml.etree import ElementTree
 
@@ -10,7 +12,14 @@ def strs_array(iterable):
 
 
 def main():
-    tree = ElementTree.parse('bane.ipe')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--grid', '-g', type=int, default=16)
+    parser.add_argument('filename')
+    args = parser.parse_args()
+
+    output_filename = '%s-solved%s' % tuple(os.path.splitext(args.filename))
+
+    tree = ElementTree.parse(args.filename)
     root = tree.getroot()
     page = root.find('page')
     boundaries = []
@@ -140,9 +149,9 @@ def main():
         ay = np.diff(vy)
         print(orient(line[0], line[1], [xs[0], ys[0]]))
         print(orient(line[0], line[1], [xs[1], ys[1]]))
-        if not np.all((-16 <= ax) & (ax <= 16)):
+        if not np.all((-args.grid <= ax) & (ax <= args.grid)):
             raise Exception("Bad ax %s %s" % (ax.min(), ax.max()))
-        if not np.all((-16 <= ay) & (ay <= 16)):
+        if not np.all((-args.grid <= ay) & (ay <= args.grid)):
             raise Exception("Bad ay %s %s" % (ay.min(), ay.max()))
         for i in range(len(vx)):
             if not valid([xs[i], ys[i]], [xs[i+1], ys[i+1]]):
@@ -169,8 +178,8 @@ def main():
             winner = u
             break
         px, py, vx, vy = u
-        for dx in (-16, 0, 16):
-            for dy in (-16, 0, 16):
+        for dx in (-args.grid, 0, args.grid):
+            for dy in (-args.grid, 0, args.grid):
                 v = (px + vx + dx, py + vy + dy, vx + dx, vy + dy)
                 if v not in parent and valid(u, v):
                     parent[v] = u
@@ -190,7 +199,7 @@ def main():
             '\n%s\n' % '\n'.join(' '.join(tuple(map(str, p))) for p in directives))
         winpath.tail = '\n'
     root.set('creator', 'vektorrally.py')
-    with open('bane-solved.ipe', 'wb') as fp:
+    with open(output_filename, 'wb') as fp:
         fp.write(b'<?xml version="1.0"?>\n<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
         fp.write(ElementTree.tostring(root))
 
