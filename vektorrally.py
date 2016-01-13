@@ -36,7 +36,7 @@ def on_segment(p, q, r):
 
 
 def orient(p, q, r):
-    """1 => pqr is left turn"""
+    """-1 => pqr is left turn"""
     p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
     s1, s2 = p.shape, r.shape
     n1, n2 = np.product(s1), np.product(s2)
