@@ -133,14 +133,24 @@ def main():
         return r
 
     p, q = line
-    initial = State((p + q) / 2, 0j)
+    g = args.grid
+    if p.real % g or p.imag % g or q.real % g or q.imag % g:
+        raise Exception(
+            "The start/finish line should lie on a %s pt boundary" % g)
+    if p.real != q.real and p.imag != q.imag:
+        raise Exception(
+            "The start/finish line should be vertical or horizontal")
+    if p.real == q.real:
+        initials = p.real + 1j * np.arange(p.imag, q.imag + g, g)
+    else:
+        initials = 1j * p.imag + np.arange(p.real, q.real + g, g)
 
-    bfs_pos = [initial.pos]
-    bfs_vel = [initial.vel]
-    parent = {initial: initial}
+    bfs_pos = [i for i in initials]
+    bfs_vel = [0j for i in initials]
+    parent = {State(i, 0j): State(i, 0j) for i in initials}
 
     diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
-    diff = diff.reshape((1, -1)) * args.grid
+    diff = diff.reshape((1, -1)) * g
 
     winner = None
     dist = 0
