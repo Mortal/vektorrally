@@ -73,7 +73,12 @@ def on_segment(p, q, r):
 
 
 def orient(p, q, r):
-    """-1 => pqr is left turn"""
+    """Right turn predicate.
+
+    Computes the orientation of r[i] with respect to each p[j],q[j].
+    1 means right turn, 0 means collinear, -1 means left turn.
+    """
+
     p, q, r = np.asarray(p), np.asarray(q), np.asarray(r)
     s1, s2 = p.shape, r.shape
     n1, n2 = np.product(s1), np.product(s2)
