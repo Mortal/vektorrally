@@ -12,14 +12,14 @@ from ipe.shape import Shape
 State = namedtuple('State', 'pos vel'.split())
 
 
-def unique_pairs(xs, ys):
-    if len(xs) == 0:
-        return xs, ys
-    indices = np.lexsort((ys, xs))
-    xs = xs[indices]
-    ys = ys[indices]
-    diff = np.concatenate(([True], (xs[1:] != xs[:-1]) | (ys[1:] != ys[:-1])))
-    return xs[diff], ys[diff]
+def unique_pairs(x1, x2):
+    if len(x1) == 0:
+        return x1, x2
+    indices = np.lexsort((x2, x1))
+    x1 = x1[indices]
+    x2 = x2[indices]
+    diff = np.concatenate(([True], (x1[1:] != x1[:-1]) | (x2[1:] != x2[:-1])))
+    return x1[diff], x2[diff]
 
 
 def on_segment(p, q, r):
