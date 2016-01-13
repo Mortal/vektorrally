@@ -10,6 +10,7 @@ from ipe.shape import Shape
 
 from vektorrally_util import unique_pairs, orient, intersects
 
+
 State = namedtuple('State', 'pos vel'.split())
 
 
