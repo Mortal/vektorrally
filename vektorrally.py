@@ -75,10 +75,15 @@ def intersects(p1, q1, p2, q2):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--grid', '-g', type=int, default=16)
+    parser.add_argument('--overwrite', '-f', action='store_true')
     parser.add_argument('filename')
     args = parser.parse_args()
 
-    output_filename = '%s-solved%s' % tuple(os.path.splitext(args.filename))
+    if args.overwrite:
+        output_filename = args.filename
+    else:
+        output_filename = (
+            '%s-solved%s' % tuple(os.path.splitext(args.filename)))
 
     ipe_page = ipe.file.parse(args.filename)
     polygons = ipe_page.polygons
