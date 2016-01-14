@@ -40,7 +40,10 @@ class Map:
         diff = diff * grid_size
         self.diff = diff.tolist()
 
-        self.initials = initials.tolist()
+        self.initials = [
+            i for i in initials.tolist()
+            if self.valid([i] * len(diff), i + diff).any()
+        ]
 
     def valid(self, p, q):
         p, q = np.asarray(p), np.asarray(q)
