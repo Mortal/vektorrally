@@ -92,13 +92,13 @@ def main():
     ipe_page = ipe_doc.pages[0]
     m = Map(ipe_page, args.grid)
 
-    winner = solve_bfs(m)
+    winner = solve_numpy_bfs(m)
     if winner:
         ipe_page.add_shape(Shape.make_polyline(winner), stroke='red')
         ipe_doc.save(output_filename)
 
 
-def solve_bfs(m):
+def solve_numpy_bfs(m):
     State = namedtuple('State', 'pos vel'.split())
 
     valid = m.valid
