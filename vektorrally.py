@@ -92,7 +92,7 @@ def main():
     ipe_page = ipe_doc.pages[0]
     m = Map(ipe_page, args.grid)
 
-    winner = solve_numpy_bfs(m)
+    winner = solve_list_bfs(m)
     if winner:
         ipe_page.add_shape(Shape.make_polyline(winner), stroke='red')
         ipe_doc.save(output_filename)
@@ -154,6 +154,38 @@ def solve_numpy_bfs(m):
         for u, v in sorted(parent.items())[:100]:
             print("parent(%s) = %s" % (u, v))
         return None
+
+
+def solve_list_bfs(m):
+    State = namedtuple('State', 'pos vel'.split())
+    bfs = [State(i, 0j) for i in m.initials]
+    parent = {State(i, 0j): State(i, 0j) for i in m.initials}
+    i = 0
+    winner = None
+    while i < len(bfs):
+        u = bfs[i]
+        i += 1
+        if i % 100 == 0:
+            print("head=%d tail=%d" % (i, len(bfs)))
+        p = parent[u]
+        if m.win(p.pos, u.pos):
+            winner = u
+            break
+        for d in m.diff.ravel().tolist():
+            v = State(u.pos + u.vel + d, u.vel + d)
+            if v not in parent and m.valid(u.pos, v.pos):
+                parent[v] = u
+                bfs.append(v)
+    if winner:
+        points = []
+        u = winner
+        while True:
+            points.append(u[0])
+            if u == parent[u]:
+                break
+            u = parent[u]
+        points.reverse()
+        return points
 
 
 if __name__ == "__main__":
