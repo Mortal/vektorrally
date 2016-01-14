@@ -94,6 +94,14 @@ def main():
         raise Exception("Ipe file should have exactly one page")
     ipe_page = ipe_doc.pages[0]
     m = Map(ipe_page, args.grid)
+
+    winner = solve_bfs(m)
+    if winner:
+        ipe_page.add_shape(Shape.make_polyline(winner), stroke='red')
+        ipe_doc.save(output_filename)
+
+
+def solve_bfs(m):
     valid = m.valid
     win = m.win
 
@@ -141,12 +149,12 @@ def main():
                 break
             u = parent[u]
         points.reverse()
-        ipe_page.add_shape(Shape.make_polyline(points), stroke='red')
-        ipe_doc.save(output_filename)
+        return points
     else:
         print("Could not solve")
         for u, v in sorted(parent.items())[:100]:
             print("parent(%s) = %s" % (u, v))
+        return None
 
 
 if __name__ == "__main__":
