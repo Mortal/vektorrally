@@ -98,7 +98,7 @@ def main():
     ipe_page = ipe_doc.pages[0]
     m = Map(ipe_page, args.grid)
 
-    winner = solve_2d(m)
+    winner = solve_numpy_bfs(m)
     if winner:
         ipe_page.add_shape(Shape.make_polyline(winner), stroke='red')
         ipe_doc.save(output_filename)
