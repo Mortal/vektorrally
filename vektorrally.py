@@ -151,6 +151,7 @@ def solve_numpy_bfs(m):
 
     valid = m.valid
     win = m.win
+    diff = np.array(m.diff).reshape(1, -1)
 
     bfs_pos = [i for i in m.initials]
     bfs_vel = [0j for i in m.initials]
@@ -165,8 +166,8 @@ def solve_numpy_bfs(m):
             [parent[State(p, v)].pos for p, v in zip(bfs_pos, bfs_vel)])
         u_pos = np.asarray(bfs_pos).reshape((-1, 1))
         u_vel = np.asarray(bfs_vel).reshape((-1, 1))
-        v_pos = u_pos + u_vel + m.diff
-        v_vel = u_vel + m.diff
+        v_pos = u_pos + u_vel + diff
+        v_vel = u_vel + diff
 
         w = win(p_pos, u_pos.ravel()).nonzero()[0]
         if len(w) > 0:
@@ -176,7 +177,7 @@ def solve_numpy_bfs(m):
         m1 = np.array(
             [[State(p, v) not in parent for p, v in zip(ps, vs)]
              for ps, vs in zip(v_pos, v_vel)])
-        m2 = valid(np.repeat(u_pos, m.diff.shape[1], 1), v_pos)
+        m2 = valid(np.repeat(u_pos, diff.shape[1], 1), v_pos)
         print("%s neighbors, %s not visited, %s valid, %s" %
               (np.product(m1.shape), m1.sum(), m2.sum(), (m1 & m2).sum()))
         for i, j in zip(*(m1 & m2).nonzero()):
