@@ -32,9 +32,9 @@ class Map:
             raise Exception(
                 "The start/finish line should be vertical or horizontal")
         if p.real == q.real:
-            initials = p.real + 1j * linrange(p.imag, q.imag + g, g)
+            initials = p.real + 1j * linrange(p.imag, q.imag, g)
         else:
-            initials = 1j * p.imag + linrange(p.real, q.real + g, g)
+            initials = 1j * p.imag + linrange(p.real, q.real, g)
 
         diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
         diff = diff * grid_size
