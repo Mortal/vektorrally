@@ -1,6 +1,13 @@
 import numpy as np
 
 
+def linrange(start, stop, step):
+    """Closed range from min(start,stop) to max(start,stop) with given step."""
+    return np.arange(np.minimum(start, stop),
+                     np.maximum(start, stop) + step,
+                     step)
+
+
 def unique_pairs(x1, x2):
     """Return the entries that are unique when taken together.
 

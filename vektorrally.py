@@ -8,7 +8,7 @@ import numpy as np
 import ipe.file
 from ipe.shape import Shape
 
-from vektorrally_util import unique_pairs, orient, intersects
+from vektorrally_util import unique_pairs, orient, intersects, linrange
 
 
 State = namedtuple('State', 'pos vel'.split())
@@ -83,9 +83,9 @@ def main():
         raise Exception(
             "The start/finish line should be vertical or horizontal")
     if p.real == q.real:
-        initials = p.real + 1j * np.arange(p.imag, q.imag + g, g)
+        initials = p.real + 1j * linrange(p.imag, q.imag + g, g)
     else:
-        initials = 1j * p.imag + np.arange(p.real, q.real + g, g)
+        initials = 1j * p.imag + linrange(p.real, q.real + g, g)
 
     bfs_pos = [i for i in initials]
     bfs_vel = [0j for i in initials]
