@@ -97,7 +97,6 @@ def main():
     valid = m.valid
     win = m.win
 
-    g = m.grid_size
     bfs_pos = [i for i in m.initials]
     bfs_vel = [0j for i in m.initials]
     parent = {State(i, 0j): State(i, 0j) for i in m.initials}
