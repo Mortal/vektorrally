@@ -98,10 +98,52 @@ def main():
     ipe_page = ipe_doc.pages[0]
     m = Map(ipe_page, args.grid)
 
-    winner = solve_list_bfs(m)
+    winner = solve_2d(m, ipe_page)
     if winner:
         ipe_page.add_shape(Shape.make_polyline(winner), stroke='red')
         ipe_doc.save(output_filename)
+
+
+def solve_2d(m, ipe_page):
+    bfs = list(m.initials)
+    dists = {v: 0 for v in bfs}
+
+    def dist(v):
+        return dists.get(v, float('inf'))
+
+    i = 0
+    winner = None
+    while i < len(bfs):
+        u = bfs[i]
+        d_u = dists[u]
+        i += 1
+        for d in m.diff:
+            if m.valid(u - d, u):
+                if d_u + 1 < dist(u - d):
+                    dists[u - d] = d_u + 1
+                    bfs.append(u - d)
+
+    first_edges = [
+        (initial, initial + d)
+        for initial in m.initials
+        for d in m.diff
+    ]
+    valid_edges = [(u, v) for u, v in first_edges if m.valid(u, v)]
+    useful_edges = [(u, v) for u, v in valid_edges if v in dists]
+    if not useful_edges:
+        print("Could not find path")
+        return
+    best_edge = min(
+        range(len(useful_edges)),
+        key=lambda i: dists[useful_edges[i][1]])
+    points = [useful_edges[best_edge][0], useful_edges[best_edge][1]]
+    while dists[points[-1]] > 0:
+        points.append(
+            min((points[-1] + d for d in m.diff
+                 if m.valid(points[-1], points[-1] + d)), key=dist))
+    for v, d in dists.items():
+        ipe_page.add_text(r'\dist{%g}' % d, v)
+    return points
 
 
 def solve_numpy_bfs(m):
