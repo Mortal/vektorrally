@@ -39,6 +39,9 @@ class Map:
         else:
             self.initials = 1j * p.imag + linrange(p.real, q.real + g, g)
 
+        diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
+        self.diff = diff.reshape((1, -1)) * grid_size
+
     def valid(self, p, q):
         p, q = np.asarray(p), np.asarray(q)
         assert p.shape == q.shape
@@ -99,9 +102,6 @@ def main():
     bfs_vel = [0j for i in m.initials]
     parent = {State(i, 0j): State(i, 0j) for i in m.initials}
 
-    diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
-    diff = diff.reshape((1, -1)) * g
-
     winner = None
     dist = 0
     while len(bfs_pos) > 0:
@@ -111,8 +111,8 @@ def main():
             [parent[State(p, v)].pos for p, v in zip(bfs_pos, bfs_vel)])
         u_pos = np.asarray(bfs_pos).reshape((-1, 1))
         u_vel = np.asarray(bfs_vel).reshape((-1, 1))
-        v_pos = u_pos + u_vel + diff
-        v_vel = u_vel + diff
+        v_pos = u_pos + u_vel + m.diff
+        v_vel = u_vel + m.diff
 
         w = win(p_pos, u_pos.ravel()).nonzero()[0]
         if len(w) > 0:
@@ -122,7 +122,7 @@ def main():
         m1 = np.array(
             [[State(p, v) not in parent for p, v in zip(ps, vs)]
              for ps, vs in zip(v_pos, v_vel)])
-        m2 = valid(np.repeat(u_pos, diff.shape[1], 1), v_pos)
+        m2 = valid(np.repeat(u_pos, m.diff.shape[1], 1), v_pos)
         print("%s neighbors, %s not visited, %s valid, %s" %
               (np.product(m1.shape), m1.sum(), m2.sum(), (m1 & m2).sum()))
         for i, j in zip(*(m1 & m2).nonzero()):
