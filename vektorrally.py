@@ -32,12 +32,15 @@ class Map:
             raise Exception(
                 "The start/finish line should be vertical or horizontal")
         if p.real == q.real:
-            self.initials = p.real + 1j * linrange(p.imag, q.imag + g, g)
+            initials = p.real + 1j * linrange(p.imag, q.imag + g, g)
         else:
-            self.initials = 1j * p.imag + linrange(p.real, q.real + g, g)
+            initials = 1j * p.imag + linrange(p.real, q.real + g, g)
 
         diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
-        self.diff = diff.reshape((1, -1)) * grid_size
+        diff = diff * grid_size
+        self.diff = diff.tolist()
+
+        self.initials = initials.tolist()
 
     def valid(self, p, q):
         p, q = np.asarray(p), np.asarray(q)
@@ -171,7 +174,7 @@ def solve_list_bfs(m):
         if m.win(p.pos, u.pos):
             winner = u
             break
-        for d in m.diff.ravel().tolist():
+        for d in m.diff:
             v = State(u.pos + u.vel + d, u.vel + d)
             if v not in parent and m.valid(u.pos, v.pos):
                 parent[v] = u
