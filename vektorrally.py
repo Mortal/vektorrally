@@ -14,6 +14,65 @@ from vektorrally_util import unique_pairs, orient, intersects, linrange
 State = namedtuple('State', 'pos vel'.split())
 
 
+class Map:
+    def __init__(self, ipe_page, grid_size):
+        self.ipe_page = ipe_page
+
+        obstacle_edges = [e for p in ipe_page.polygons for e in p.get_edges()]
+        self.obstacle_p, self.obstacle_q = map(
+            np.asarray, zip(*obstacle_edges))
+
+        lines = list(ipe_page.lines)
+        if len(lines) != 1:
+            raise Exception("Ipe file should have exactly one line segment")
+
+        p, q = self.goal = lines[0].endpoints()
+        self.grid_size = g = grid_size
+        if p.real % g or p.imag % g or q.real % g or q.imag % g:
+            raise Exception(
+                "The start/finish line should lie on a %s pt boundary" % g)
+        if p.real != q.real and p.imag != q.imag:
+            raise Exception(
+                "The start/finish line should be vertical or horizontal")
+        if p.real == q.real:
+            self.initials = p.real + 1j * linrange(p.imag, q.imag + g, g)
+        else:
+            self.initials = 1j * p.imag + linrange(p.real, q.real + g, g)
+
+    def valid(self, p, q):
+        p, q = np.asarray(p), np.asarray(q)
+        assert p.shape == q.shape
+        if p.shape == ():
+            return self.valid([p], [q])[0]
+        i = intersects(p, q, self.goal[0], self.goal[1])
+        op = orient(self.goal[0], self.goal[1], p)
+        oq = orient(self.goal[0], self.goal[1], q)
+
+        r = np.ones(p.shape, dtype=np.bool)
+        r[i & (op >= oq)] = False
+
+        i2 = intersects(self.obstacle_p, self.obstacle_q, p, q)
+        i2 = i2.any(axis=tuple(range(self.obstacle_p.ndim)))
+        r[i2] = False
+        return r
+
+    def win(self, p, q):
+        p, q = np.asarray(p), np.asarray(q)
+        assert p.shape == q.shape
+        if p.shape == ():
+            return self.win([p], [q])[0]
+
+        r = np.zeros(p.shape, dtype=np.bool)
+
+        i = intersects(p, q, self.goal[0], self.goal[1])
+        op = orient(self.goal[0], self.goal[1], p)
+        oq = orient(self.goal[0], self.goal[1], q)
+        r[i & (-1 == op) & (op < oq)] = True
+
+        r[p == q] = False
+        return r
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--grid', '-g', type=int, default=16)
@@ -31,65 +90,14 @@ def main():
     if len(ipe_doc.pages) != 1:
         raise Exception("Ipe file should have exactly one page")
     ipe_page = ipe_doc.pages[0]
+    m = Map(ipe_page, args.grid)
+    valid = m.valid
+    win = m.win
 
-    polygons = list(ipe_page.polygons)
-    lines = list(ipe_page.lines)
-    if len(lines) != 1:
-        raise Exception("Ipe file should have exactly one line segment")
-    line = lines[0].endpoints()
-
-    edges = [e for p in polygons for e in p.get_edges()]
-    edge_p, edge_q = map(np.asarray, zip(*edges))
-
-    def valid(p, q):
-        p, q = np.asarray(p), np.asarray(q)
-        assert p.shape == q.shape
-        if p.shape == ():
-            return valid([p], [q])[0]
-        i = intersects(p, q, line[0], line[1])
-        op = orient(line[0], line[1], p)
-        oq = orient(line[0], line[1], q)
-
-        r = np.ones(p.shape, dtype=np.bool)
-        r[i & (op >= oq)] = False
-
-        i2 = intersects(edge_p, edge_q, p, q)
-        i2 = i2.any(axis=tuple(range(edge_p.ndim)))
-        r[i2] = False
-        return r
-
-    def win(p, q):
-        p, q = np.asarray(p), np.asarray(q)
-        assert p.shape == q.shape
-        if p.shape == ():
-            return win([p], [q])[0]
-
-        r = np.zeros(p.shape, dtype=np.bool)
-
-        i = intersects(p, q, line[0], line[1])
-        op = orient(line[0], line[1], p)
-        oq = orient(line[0], line[1], q)
-        r[i & (-1 == op) & (op < oq)] = True
-
-        r[p == q] = False
-        return r
-
-    p, q = line
-    g = args.grid
-    if p.real % g or p.imag % g or q.real % g or q.imag % g:
-        raise Exception(
-            "The start/finish line should lie on a %s pt boundary" % g)
-    if p.real != q.real and p.imag != q.imag:
-        raise Exception(
-            "The start/finish line should be vertical or horizontal")
-    if p.real == q.real:
-        initials = p.real + 1j * linrange(p.imag, q.imag + g, g)
-    else:
-        initials = 1j * p.imag + linrange(p.real, q.real + g, g)
-
-    bfs_pos = [i for i in initials]
-    bfs_vel = [0j for i in initials]
-    parent = {State(i, 0j): State(i, 0j) for i in initials}
+    g = m.grid_size
+    bfs_pos = [i for i in m.initials]
+    bfs_vel = [0j for i in m.initials]
+    parent = {State(i, 0j): State(i, 0j) for i in m.initials}
 
     diff = np.array([-1-1j, -1j, 1-1j, -1, 0, 1, -1+1j, 1j, 1+1j])
     diff = diff.reshape((1, -1)) * g
