@@ -98,22 +98,22 @@ def main():
     ipe_page = ipe_doc.pages[0]
     m = Map(ipe_page, args.grid)
 
-    winner = solve_2d(m, ipe_page)
+    winner = solve_2d(m)
     if winner:
         ipe_page.add_shape(Shape.make_polyline(winner), stroke='red')
         ipe_doc.save(output_filename)
 
 
-def solve_2d(m, ipe_page):
+def add_dists(dists, ipe_page):
+    for v, d in dists.items():
+        ipe_page.add_text(r'\dist{%g}' % d, v)
+
+
+def goal_distance_2d(m):
     bfs = np.array(m.initials)
     dists = {v: 0 for v in m.initials}
     diff = np.array(m.diff).reshape(1, -1)
 
-    def dist(v):
-        return dists.get(v, float('inf'))
-
-    i = 0
-    winner = None
     d = 0
     while len(bfs) > 0:
         for v in bfs.tolist():
@@ -128,6 +128,15 @@ def solve_2d(m, ipe_page):
         v = np.repeat(v, diff.shape[1], 1)[m1]
         m2 = m.valid(u, v)
         bfs = np.unique(u[m2])
+
+    return dists
+
+
+def solve_2d(m):
+    dists = goal_distance_2d(m)
+
+    def dist(v):
+        return dists.get(v, float('inf'))
 
     first_edges = [
         (initial, initial + d)
@@ -147,8 +156,6 @@ def solve_2d(m, ipe_page):
         points.append(
             min((points[-1] + d for d in m.diff
                  if m.valid(points[-1], points[-1] + d)), key=dist))
-    for v, d in dists.items():
-        ipe_page.add_text(r'\dist{%g}' % d, v)
     return points
 
 
