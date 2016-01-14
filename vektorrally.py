@@ -11,9 +11,6 @@ from ipe.shape import Shape
 from vektorrally_util import unique_pairs, orient, intersects, linrange
 
 
-State = namedtuple('State', 'pos vel'.split())
-
-
 class Map:
     def __init__(self, ipe_page, grid_size):
         self.ipe_page = ipe_page
@@ -102,6 +99,8 @@ def main():
 
 
 def solve_bfs(m):
+    State = namedtuple('State', 'pos vel'.split())
+
     valid = m.valid
     win = m.win
 
