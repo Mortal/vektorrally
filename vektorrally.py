@@ -105,23 +105,29 @@ def main():
 
 
 def solve_2d(m, ipe_page):
-    bfs = list(m.initials)
-    dists = {v: 0 for v in bfs}
+    bfs = np.array(m.initials)
+    dists = {v: 0 for v in m.initials}
+    diff = np.array(m.diff).reshape(1, -1)
 
     def dist(v):
         return dists.get(v, float('inf'))
 
     i = 0
     winner = None
-    while i < len(bfs):
-        u = bfs[i]
-        d_u = dists[u]
-        i += 1
-        for d in m.diff:
-            if m.valid(u - d, u):
-                if d_u + 1 < dist(u - d):
-                    dists[u - d] = d_u + 1
-                    bfs.append(u - d)
+    d = 0
+    while len(bfs) > 0:
+        for v in bfs.tolist():
+            dists[v] = d
+        d += 1
+        v = bfs.reshape(-1, 1)
+        u = v - diff
+        m1 = np.asarray([
+            [a.item() not in dists for a in row]
+            for row in u])
+        u = u[m1]
+        v = np.repeat(v, diff.shape[1], 1)[m1]
+        m2 = m.valid(u, v)
+        bfs = np.unique(u[m2])
 
     first_edges = [
         (initial, initial + d)
