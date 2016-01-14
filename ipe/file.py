@@ -49,6 +49,16 @@ class IpePage:
         path.text = '\n' + shape.to_ipe_path()
         path.tail = '\n'
 
+    def add_text(self, text, pos):
+        pos_str = '%g %g' % (pos.real, pos.imag)
+        t = ElementTree.SubElement(self.page, 'text',
+            pos=pos_str,
+            type='label',
+            halign='center',
+            valign='center')
+        t.text = text
+        t.tail = '\n'
+
 
 class IpeDoc:
     def __init__(self, tree):
