@@ -7,6 +7,29 @@ class MatrixTransform:
         return (a[0] * x1 + a[2] * x2 + a[4],
                 a[1] * x1 + a[3] * x2 + a[5])
 
+    def and_then(self, other):
+        """
+        Compose matrix transformations.
+        >>> a = MatrixTransform((3, 0, 0, 2, 16, 16))
+        >>> b = MatrixTransform((2, 0, 0, 2, -16, 0))
+        >>> ab = a.and_then(b)
+        >>> ab.transform(0, 0)
+        (16, 32)
+        >>> ab.transform(0, 16)
+        (16, 96)
+        >>> ab.transform(16, 16)
+        (112, 96)
+        >>> ab.coefficients
+        (6, 0, 0, 4, 16, 32)
+        >>> MatrixTransform((1, 1, 0, 1, 16, 16)).and_then(
+        ... MatrixTransform((0, -1, 1, 1, -16, 0))).coefficients
+        (1, 0, 1, 1, 0, 0)
+        """
+        (z1, z2), (a1, a2), (b1, b2) = [
+            other.transform(*self.transform(*p))
+            for p in [(0, 0), (1, 0), (0, 1)]]
+        return type(self)((a1-z1, a2-z2, b1-z1, b2-z2, z1, z2))
+
     @classmethod
     def identity(cls):
         """
