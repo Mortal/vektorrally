@@ -7,6 +7,14 @@ class MatrixTransform:
         return (a[0] * x1 + a[2] * x2 + a[4],
                 a[1] * x1 + a[3] * x2 + a[5])
 
+    @classmethod
+    def identity(cls):
+        """
+        >>> MatrixTransform.identity().transform(123, 456)
+        (123, 456)
+        """
+        return cls((1, 0, 0, 1, 0, 0))
+
 
 def load_matrix(data):
     return MatrixTransform(map(float, data.split()))
