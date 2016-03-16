@@ -183,3 +183,17 @@ def load_shape(data, attrib=None):
     if any(len(c.edges) == 0 for c in curves):
         raise ValueError()
     return Shape(curves)
+
+def apply_matrix_to_shape(data, matrix):
+    result = ['\n']
+    x = None
+    for tok in data.split():
+        if tok in 'h m l q c a s e u'.split():
+            result.append('%s\n' % tok)
+        elif x is None:
+            x = float(tok)
+        else:
+            y = float(tok)
+            result.append('%s %s ' % matrix.transform(x, y))
+            x = None
+    return ''.join(result)
