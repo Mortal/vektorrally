@@ -3,6 +3,11 @@ from xml.etree import ElementTree
 import ipe.shape
 
 
+class IpeBitmap:
+    def __init__(self, element):
+        self.element = element
+
+
 class IpePage:
     def __init__(self, page, document):
         # ipeiml.cpp ImlParser::parsePage
@@ -64,6 +69,10 @@ class IpePage:
 class IpeDoc:
     def __init__(self, tree):
         self.root = tree.getroot()
+        self.bitmaps = {
+            int(el.get('id')): IpeBitmap(el)
+            for el in self.root.findall('bitmap')
+        }
         self.pages = [
             IpePage(el, self)
             for el in self.root.findall('page')
