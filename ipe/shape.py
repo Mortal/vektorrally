@@ -60,6 +60,9 @@ class Curve:
         return "Curve(edges=%r, closed=%r, matrix=%r)" % (
             self.edges, self.closed, self.matrix)
 
+    def __bool__(self):
+        return bool(self.edges)
+
     @classmethod
     def make_polyline(cls, points):
         if not all(isinstance(p, complex) for p in points):
