@@ -10,6 +10,9 @@ class IpeBitmap:
     def __init__(self, element):
         self.element = element
 
+    def construct(self):
+        return self.element
+
 
 class View:
     def __init__(self, layers, active, marked):
@@ -217,6 +220,35 @@ class IpeDoc:
             IpePage(el, self)
             for el in self.root.findall('page')
         ]
+
+    @property
+    def root_attrib(self):
+        root_attrib = dict(self.root.attrib)
+        root_attrib['creator'] = 'vektorrally.py'
+        return root_attrib
+
+    @property
+    def info_attrib(self):
+        return self.root.find('info').attrib
+
+    @property
+    def preamble(self):
+        return self.root.text
+
+    @property
+    def ipestyle_element(self):
+        return self.root.find('ipestyle')
+
+    def construct(self, bitmaps):
+        root = ET.Element(self.root.tag, **self.root_attrib)
+        info = ET.SubElement(root, 'info', **self.info_attrib)
+        preamble = ET.SubElement(root, 'preamble')
+        preamble.text = self.preamble
+        for i in sorted(bitmaps.keys()):
+            e = bitmaps[i].construct()
+            e['id'] = str(i)
+            root.append(e)
+        root.append(self.ipestyle_element)
 
     def save(self, filename):
         self.root.set('creator', 'vektorrally.py')
