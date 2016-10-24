@@ -182,8 +182,7 @@ def load_shape(data, attrib=None):
         elif tok == "m":
             if len(args) != 2:
                 raise ValueError()
-            subpath = Curve()
-            subpath.matrix = matrix
+            subpath = Curve(matrix=matrix)
             curves.append(subpath)
             current_position = pop_point()
         elif tok == "l":
