@@ -1,4 +1,4 @@
-from xml.etree import ElementTree
+from xml.etree import ElementTree as ET
 
 import ipe.shape
 from ipe.object import (
@@ -189,13 +189,13 @@ class IpePage:
             raise Exception("Unknown tag %s" % (child,))
 
     def add_shape(self, shape, **kwargs):
-        path = ElementTree.SubElement(self.page_element, 'path', **kwargs)
+        path = ET.SubElement(self.page_element, 'path', **kwargs)
         path.text = '\n' + shape.to_ipe_path()
         path.tail = '\n'
 
     def add_text(self, text, pos):
         pos_str = '%g %g' % (pos.real, pos.imag)
-        t = ElementTree.SubElement(self.page_element, 'text',
+        t = ET.SubElement(self.page_element, 'text',
             pos=pos_str,
             type='label',
             halign='center',
@@ -230,7 +230,7 @@ class IpeDoc:
             fp.write(
                 '<?xml version="1.0"?>\n' +
                 '<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
-            fp.write(ElementTree.tostring(self.root, encoding='unicode'))
+            fp.write(ET.tostring(self.root, encoding='unicode'))
 
     @staticmethod
     def extract_style_names(ipestyle_element):
@@ -253,4 +253,4 @@ class IpeDoc:
 
 
 def parse(filename):
-    return IpeDoc(ElementTree.parse(filename))
+    return IpeDoc(ET.parse(filename))
