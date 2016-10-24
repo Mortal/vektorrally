@@ -1,6 +1,7 @@
 from xml.etree import ElementTree
 
 import ipe.shape
+from ipe.object import parse_text, parse_image, parse_use, make_group
 
 
 class IpeBitmap:
@@ -14,17 +15,34 @@ class IpePage:
         self.document = document
         self.page_element = page
         self.objects = []
+        self.title = page.get('title', '')
+        self.section = page.get('section', '')
+        self.subsection = page.get('subsection', '')
+        self.marked = page.get('marked') == 'no'
+        self.layers = []
+        self.views = []
+        self.current_layer = None
 
         for child in page:
             if child.tag == 'notes':
                 pass
             elif child.tag == 'layer':
-                pass
+                self.layers.append(child.attrib['name'])
             elif child.tag == 'view':
-                pass
+                self.views.append({
+                    'layers': child.attrib['layers'].split(),
+                    'active': child.attrib['active'],
+                    'marked': child.get('marked') == 'yes'})
             else:
+                self.current_layer = child.get('layer', self.current_layer)
+                if self.current_layer is None:
+                    if not self.layers:
+                        self.layers.append('alpha')
+                    self.current_layer = self.layers[0]
                 # ipefactory.cpp createObject
-                self.parse_object(child)
+                object = self.parse_object(child)
+                object.layer = self.current_layer
+                self.objects.append(object)
 
     @property
     def lines(self):
@@ -36,17 +54,21 @@ class IpePage:
 
     def parse_object(self, child):
         if child.tag == 'path':
-            self.objects.append(
-                ipe.shape.load_shape(child.text, child.attrib))
+            return ipe.shape.load_shape(child.text, child.attrib)
         elif child.tag == 'text':
-            return  # skip
+            return parse_text(child.text, child.attrib)
         elif child.tag == 'image':
-            return  # skip
+            if child.get('bitmap'):
+                bitmap_id = int(child.attrib['bitmap'])
+                bitmap = self.document.bitmaps[bitmap_id]
+                return parse_image(bitmap, child.attrib)
+            else:
+                return parse_image(child.text, child.attrib)
         elif child.tag == 'use':
-            return  # skip
+            return parse_use(child.attrib)
         elif child.tag == 'group':
-            for c in child:
-                self.parse_object(c)
+            return make_group([self.parse_object(c) for c in child],
+                              child.attrib)
         else:
             raise Exception("Unknown tag %s" % (child,))
 
