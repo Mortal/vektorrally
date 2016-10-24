@@ -10,6 +10,10 @@ class MatrixTransform:
         return (a[0] * x1 + a[2] * x2 + a[4],
                 a[1] * x1 + a[3] * x2 + a[5])
 
+    def determinant(self):
+        a = self.coefficients
+        return a[0] * a[3] - a[1] * a[2]
+
     def and_then(self, other):
         """
         Compose matrix transformations.
