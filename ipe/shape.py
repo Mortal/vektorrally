@@ -172,6 +172,11 @@ def load_shape(data, attrib=None):
         y, x = args.pop(), args.pop()
         return complex(x, y)
 
+    def pop_matrix():
+        m = MatrixTransform(args[-6:])
+        del args[-6:]
+        return m
+
     for tok in data.split():
         if tok == "h":
             # Closing path
@@ -191,7 +196,13 @@ def load_shape(data, attrib=None):
             v = pop_point()
             subpath.append_segment(current_position, v)
             current_position = v
-        elif tok in 'q c a s e u'.split():
+        elif tok == 'e':
+            if len(args) != 6:
+                raise ValueError()
+            m = pop_matrix()
+            subpath = None
+            curves.append(Ellipse(m, matrix=matrix))
+        elif tok in 'q c a s u'.split():
             raise NotImplementedError
         else:
             # Must be a number
