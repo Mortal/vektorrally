@@ -141,6 +141,8 @@ class IpeDoc:
             int(el.get('id')): IpeBitmap(el)
             for el in self.root.findall('bitmap')
         }
+        self.style_names = self.extract_style_names(
+            self.root.find('ipestyle'))
         self.pages = [
             IpePage(el, self)
             for el in self.root.findall('page')
@@ -153,6 +155,17 @@ class IpeDoc:
                 b'<?xml version="1.0"?>\n' +
                 b'<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
             fp.write(ElementTree.tostring(self.root))
+
+    @staticmethod
+    def extract_style_names(ipestyle_element):
+        res = {}
+        for child in ipestyle_element:
+            try:
+                name = child.attrib['name']
+            except KeyError:
+                continue
+            res.setdefault(child.tag, set()).add(name)
+        return res
 
 
 def parse(filename):
