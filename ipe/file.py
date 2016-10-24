@@ -4,8 +4,9 @@ import ipe.shape
 
 
 class IpePage:
-    def __init__(self, page):
+    def __init__(self, page, document):
         # ipeiml.cpp ImlParser::parsePage
+        self.document = document
         self.page_element = page
         self.objects = []
 
@@ -64,7 +65,7 @@ class IpeDoc:
     def __init__(self, tree):
         self.root = tree.getroot()
         self.pages = [
-            IpePage(el)
+            IpePage(el, self)
             for el in self.root.findall('page')
         ]
 
