@@ -167,6 +167,9 @@ class IpeDoc:
             res.setdefault(child.tag, set()).add(name)
         return res
 
+    def __repr__(self):
+        return "<IpeDoc: %d pages %s>" % (len(self.pages), self.pages)
+
 
 def parse(filename):
     return IpeDoc(ElementTree.parse(filename))
