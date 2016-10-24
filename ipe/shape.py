@@ -199,7 +199,7 @@ def load_shape(data, attrib=None):
 
     if len(curves) == 0:
         raise ValueError()
-    if any(len(c.edges) == 0 for c in curves):
+    if not all(curves):
         raise ValueError()
     return Shape(curves)
 
