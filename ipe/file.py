@@ -9,6 +9,19 @@ class IpeBitmap:
         self.element = element
 
 
+class View:
+    def __init__(self, layers, active, marked):
+        self.layers = layers
+        self.active = active
+        self.marked = marked
+
+    def __str__(self):
+        return '<View [%s] active=%s%s>' % (
+            ' '.join(self.layers),
+            self.active,
+            ' marked' if self.marked else '')
+
+
 class IpePage:
     def __init__(self, page, document):
         # ipeiml.cpp ImlParser::parsePage
@@ -29,10 +42,10 @@ class IpePage:
             elif child.tag == 'layer':
                 self.layers.append(child.attrib['name'])
             elif child.tag == 'view':
-                self.views.append({
-                    'layers': child.attrib['layers'].split(),
-                    'active': child.attrib['active'],
-                    'marked': child.get('marked') == 'yes'})
+                self.views.append(View(
+                    layers=child.attrib['layers'].split(),
+                    active=child.attrib['active'],
+                    marked=child.get('marked') == 'yes'))
             else:
                 self.current_layer = child.get('layer', self.current_layer)
                 if self.current_layer is None:
@@ -43,6 +56,39 @@ class IpePage:
                 object = self.parse_object(child)
                 object.layer = self.current_layer
                 self.objects.append(object)
+        if not self.views:
+            self.views.append(View(
+                layers=list(self.layers),
+                active=self.layers[0],
+                marked=False))
+
+    def __repr__(self):
+        return '<IpePage: %d objects%s%s>' % (
+            len(self.objects),
+            ', %d views' % len(self.views) if len(self.views) > 1 else '',
+            ', %d layers' % len(self.layers) if len(self.layers) > 1 else '')
+
+    def prune_objects(self):
+        "Remove objects in layers that are invisible."
+        visible_layers = set.union(set(v['layers']) for v in self.views)
+        self.objects = [
+            o for o in self.objects
+            if o.layer in visible_layers]
+
+    def prune(self):
+        "Remove layers and views that contain no objects."
+        nonempty_layers = set(o.layer for o in self.objects)
+        if nonempty_layers:
+            print("prune: No objects in page, aborting")
+            return
+        self.layers = [l for l in self.layers if l in nonempty_layers]
+        for v in self.views:
+            v.layers = [l for l in self.layers if l in nonempty_layers]
+            if v.active not in nonempty_layers:
+                if v.layers:
+                    v.active = v.layers[0]
+                else:
+                    v.active = next(iter(nonempty_layers))
 
     @property
     def lines(self):
