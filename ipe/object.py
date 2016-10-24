@@ -57,6 +57,14 @@ class Text(IpeObject):
         super().__init__()
         self.text = text
         self.attrib = attrib
+        matrix_data = attrib.get('matrix')
+        self.matrix = None if matrix_data is None else load_matrix(matrix_data)
+
+        x, y = map(float, self.attrib['pos'].split())
+        if self.matrix is None:
+            self.position = (x, y)
+        else:
+            self.position = self.matrix.transform(x, y)
 
     @classmethod
     def parse(cls, text, attrib):
