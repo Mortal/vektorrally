@@ -150,11 +150,11 @@ class IpeDoc:
 
     def save(self, filename):
         self.root.set('creator', 'vektorrally.py')
-        with open(filename, 'wb') as fp:
+        with open(filename, 'w') as fp:
             fp.write(
-                b'<?xml version="1.0"?>\n' +
-                b'<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
-            fp.write(ElementTree.tostring(self.root))
+                '<?xml version="1.0"?>\n' +
+                '<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
+            fp.write(ElementTree.tostring(self.root, encoding='unicode'))
 
     @staticmethod
     def extract_style_names(ipestyle_element):
