@@ -6,7 +6,7 @@ import ipe.shape
 class IpePage:
     def __init__(self, page):
         # ipeiml.cpp ImlParser::parsePage
-        self.page = page
+        self.page_element = page
         self.objects = []
 
         for child in page:
@@ -45,13 +45,13 @@ class IpePage:
             raise Exception("Unknown tag %s" % (child,))
 
     def add_shape(self, shape, **kwargs):
-        path = ElementTree.SubElement(self.page, 'path', **kwargs)
+        path = ElementTree.SubElement(self.page_element, 'path', **kwargs)
         path.text = '\n' + shape.to_ipe_path()
         path.tail = '\n'
 
     def add_text(self, text, pos):
         pos_str = '%g %g' % (pos.real, pos.imag)
-        t = ElementTree.SubElement(self.page, 'text',
+        t = ElementTree.SubElement(self.page_element, 'text',
             pos=pos_str,
             type='label',
             halign='center',
