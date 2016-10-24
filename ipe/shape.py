@@ -1,3 +1,6 @@
+from .object import IpeObject
+
+
 class MatrixTransform:
     def __init__(self, coefficients):
         self.coefficients = tuple(coefficients)
@@ -105,8 +108,15 @@ class Curve:
         return ''.join(directives)
 
 
-class Shape:
+class Ellipse:
+    def __init__(self, data, matrix=None):
+        self.data = data
+        self.matrix = matrix
+
+
+class Shape(IpeObject):
     def __init__(self, curves):
+        super().__init__()
         self.curves = curves
 
     def __repr__(self):
