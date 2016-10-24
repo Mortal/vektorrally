@@ -220,6 +220,12 @@ class IpeDoc:
 
     def save(self, filename):
         self.root.set('creator', 'vektorrally.py')
+        children = list(self.root)
+        page_children = [c for c in children if c.tag == 'page']
+        for c in page_children:
+            self.root.remove(c)
+        for p in self.pages:
+            self.root.append(p.page_element)
         with open(filename, 'w') as fp:
             fp.write(
                 '<?xml version="1.0"?>\n' +
