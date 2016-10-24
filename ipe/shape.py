@@ -56,6 +56,9 @@ class Curve:
         self.closed = closed
         self.matrix = matrix
 
+    def append_segment(self, u, v):
+        self.edges.append((u, v))
+
     def __repr__(self):
         return "Curve(edges=%r, closed=%r, matrix=%r)" % (
             self.edges, self.closed, self.matrix)
@@ -187,7 +190,7 @@ def load_shape(data, attrib=None):
             if len(args) != 2:
                 raise ValueError()
             v = pop_point()
-            subpath.edges.append((current_position, v))
+            subpath.append_segment(current_position, v)
             current_position = v
         elif tok in 'q c a s e u'.split():
             raise NotImplementedError
