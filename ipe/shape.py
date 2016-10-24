@@ -152,6 +152,12 @@ class Shape(IpeObject):
         return ''.join(c.to_ipe_path() for c in self.curves)
 
 
+class OpaqueShape(IpeObject):
+    def __init__(self, data, attrib):
+        self.data = data
+        self.attrib = attrib
+
+
 def load_shape(data, attrib=None):
     """Load Ipe shape data from a string.
 
@@ -203,7 +209,7 @@ def load_shape(data, attrib=None):
             subpath = None
             curves.append(Ellipse(m, matrix=matrix))
         elif tok in 'q c a s u'.split():
-            raise NotImplementedError
+            return OpaqueShape(data, attrib)
         else:
             # Must be a number
             args.append(float(tok))
