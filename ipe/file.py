@@ -1,7 +1,9 @@
 from xml.etree import ElementTree
 
 import ipe.shape
-from ipe.object import parse_text, parse_image, parse_use, make_group
+from ipe.object import (
+    parse_text, parse_image, parse_use, make_group, Text, Group,
+)
 
 
 class IpeBitmap:
@@ -15,11 +17,24 @@ class View:
         self.active = active
         self.marked = marked
 
+    @property
+    def standard(self):
+        return (self.layers == ['alpha'] and
+                self.active == 'alpha' and
+                not self.marked)
+
     def __str__(self):
-        return '<View [%s] active=%s%s>' % (
-            ' '.join(self.layers),
-            self.active,
-            ' marked' if self.marked else '')
+        marked = ' marked' if self.marked else ''
+        if len(self.layers) == 1 and self.active == self.layers[0]:
+            if self.layers == ['alpha']:
+                return '<View%s>' % marked
+            else:
+                return '<View [%s]%s>' % (self.layers[0], marked)
+        else:
+            return '<View [%s] active=%s%s>' % (
+                ' '.join(self.layers),
+                self.active,
+                marked)
 
 
 class IpePage:
@@ -63,10 +78,65 @@ class IpePage:
                 marked=False))
 
     def __repr__(self):
-        return '<IpePage: %d objects%s%s>' % (
+        return '<IpePage: %s>' % self.summary
+
+    def copy(self):
+        from copy import deepcopy
+
+        return deepcopy(self)
+
+    @property
+    def summary(self):
+        t = next(
+            (t for view_texts in self.text_strings() for t in view_texts),
+            None)
+        return '%d objects%s%s%s' % (
             len(self.objects),
             ', %d views' % len(self.views) if len(self.views) > 1 else '',
-            ', %d layers' % len(self.layers) if len(self.layers) > 1 else '')
+            ', %d layers' % len(self.layers) if len(self.layers) > 1 else '',
+            ', "%s"' % t if t else '')
+
+    def describe(self, indent=''):
+        yield indent + self.summary
+        view_data = zip(self.views, self.text_strings())
+        for i, (view, texts) in enumerate(view_data):
+            if len(self.views) != 1 or not view.standard:
+                yield indent + 'View %s: %s' % (i, view)
+            for t in texts[:1]:
+                t_abbr = t if len(t) < 70 else (t[:67] + '...')
+                yield indent + '- %s' % t_abbr
+
+    def itertexts(self):
+        def walk(l, g):
+            for o in l:
+                if isinstance(o, Text):
+                    yield (g or o.layer, o)
+                elif isinstance(o, Group):
+                    yield from walk(o.children, g or o.layer)
+
+        return walk(self.objects, None)
+
+    def text_strings(self):
+        layer_occurrence = {}
+        for i, v in enumerate(self.views):
+            for l in v.layers:
+                layer_occurrence.setdefault(l, i)
+        texts_occurrence = {}
+        for g, t in self.itertexts():
+            try:
+                i = layer_occurrence[g]
+            except KeyError:
+                continue
+            else:
+                texts_occurrence.setdefault(i, []).append(t)
+        for i, ts in texts_occurrence.items():
+            ts.sort(key=lambda t: -t.position[1])
+            ts[:] = [' '.join(w for w in t.text.split()
+                              if not w.startswith('\\'))
+                     for t in ts]
+            ts[:] = [t for t in ts if t]
+        return [texts_occurrence.get(i, [])
+                for i, l in enumerate(self.views)]
 
     def prune_objects(self):
         "Remove objects in layers that are invisible."
@@ -169,6 +239,11 @@ class IpeDoc:
 
     def __repr__(self):
         return "<IpeDoc: %d pages %s>" % (len(self.pages), self.pages)
+
+    def describe(self):
+        for i, page in enumerate(self.pages):
+            yield 'Page %d:' % i
+            yield from page.describe('  ')
 
 
 def parse(filename):
