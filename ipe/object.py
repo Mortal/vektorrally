@@ -80,6 +80,10 @@ class Image(IpeObject):
     def parse(cls, bitmap_data, attrib):
         return cls(bitmap_data, attrib)
 
+    @property
+    def bitmap_data(self):
+        raise NotImplementedError
+
 
 class Reference(IpeObject):
     def __init__(self, attrib):

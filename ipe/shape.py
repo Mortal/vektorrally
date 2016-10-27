@@ -69,12 +69,6 @@ class Curve:
         return ''.join(directives)
 
 
-class Ellipse:
-    def __init__(self, data, matrix=None):
-        self.data = data
-        self.matrix = matrix
-
-
 class Shape(IpeObject):
     def __init__(self, curves):
         super().__init__()
@@ -86,6 +80,12 @@ class Shape(IpeObject):
     @classmethod
     def make_polyline(cls, points):
         return cls([Curve.make_polyline(points)])
+
+    @property
+    def matrix(self):
+        for c in self.curves:
+            if c.matrix:
+                return c.matrix
 
     def is_line_segment(self):
         return len(self.curves) == 1 and self.curves[0].is_line_segment()
@@ -153,13 +153,7 @@ def load_shape(data, attrib=None):
             v = pop_point()
             subpath.append_segment(current_position, v)
             current_position = v
-        elif tok == 'e':
-            if len(args) != 6:
-                raise ValueError()
-            m = pop_matrix()
-            subpath = None
-            curves.append(Ellipse(m, matrix=matrix))
-        elif tok in 'q c a s u'.split():
+        elif tok in 'e q c a s u'.split():
             return OpaqueShape(data, attrib)
         else:
             # Must be a number

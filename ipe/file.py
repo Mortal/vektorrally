@@ -1,8 +1,10 @@
 from xml.etree import ElementTree as ET
 
 import ipe.shape
+from ipe.shape import Shape, OpaqueShape
 from ipe.object import (
-    parse_text, parse_image, parse_use, make_group, Text, Group,
+    parse_text, parse_image, parse_use, make_group,
+    Text, Image, Reference, Group,
 )
 
 
@@ -83,6 +85,17 @@ class IpePage:
     def __repr__(self):
         return '<IpePage: %s>' % self.summary
 
+    def split_at_view(self, idx):
+        first = self.copy()
+        second = self.copy()
+        first.views = first.views[:idx]
+        second.views = second.views[idx:]
+        first.prune_objects()
+        first.prune()
+        second.prune_objects()
+        second.prune()
+        return first, second
+
     def copy(self):
         from copy import deepcopy
 
@@ -143,7 +156,8 @@ class IpePage:
 
     def prune_objects(self):
         "Remove objects in layers that are invisible."
-        visible_layers = set.union(set(v['layers']) for v in self.views)
+        view_layers = [set(v.layers) for v in self.views]
+        visible_layers = set.union(*view_layers)
         self.objects = [
             o for o in self.objects
             if o.layer in visible_layers]
@@ -151,7 +165,7 @@ class IpePage:
     def prune(self):
         "Remove layers and views that contain no objects."
         nonempty_layers = set(o.layer for o in self.objects)
-        if nonempty_layers:
+        if not nonempty_layers:
             print("prune: No objects in page, aborting")
             return
         self.layers = [l for l in self.layers if l in nonempty_layers]
@@ -206,6 +220,69 @@ class IpePage:
         t.text = text
         t.tail = '\n'
 
+    def make_object_element(self, o, **kwargs):
+        if isinstance(o, Shape):
+            e = ET.Element('path')
+            if o.matrix:
+                e.set('matrix',
+                      ' '.join('%g' % c for c in o.matrix.coefficients))
+            e.text = '\n' + o.to_ipe_path()
+            return e
+        elif isinstance(o, OpaqueShape):
+            e = ET.Element('path', **o.attrib)
+            e.text = o.data
+            return e
+        elif isinstance(o, Text):
+            e = ET.Element('text', **o.attrib)
+            e.text = o.text
+            return e
+        elif isinstance(o, Image):
+            e = ET.Element('image', **o.attrib)
+            bitmaps = kwargs.get('bitmaps', {})
+            for i, v in bitmaps.items():
+                if v is o.data:
+                    e.set('bitmap', str(i))
+                    break
+            else:
+                e.text = o.bitmap_data
+            return e
+        elif isinstance(o, Reference):
+            return ET.Element('use', **o.attrib)
+        elif isinstance(o, Group):
+            e = ET.Element('group', **o.attrib)
+            for c in o.children:
+                ce = self.make_object_element(c, **kwargs)
+                assert ce is not None
+                ce.tail = '\n'
+                e.append(ce)
+            return e
+        else:
+            raise TypeError(type(o))
+
+    def make_page_element(self, bitmaps):
+        page = ET.Element('page')
+        page.text = '\n'
+        for l in self.layers:
+            e = ET.SubElement(page, 'layer', name=l)
+            e.tail = '\n'
+        for v in self.views:
+            e = ET.SubElement(page, 'view',
+                              active=v.active,
+                              layers=' '.join(v.layers))
+            e.tail = '\n'
+            if v.marked:
+                e.set('marked', 'yes')
+
+        self.current_layer = None
+        for o in self.objects:
+            e = self.make_object_element(o, bitmaps=bitmaps)
+            e.tail = '\n'
+            if o.layer != self.current_layer:
+                self.current_layer = o.layer
+                e.set('layer', o.layer)
+            page.append(e)
+        return page
+
 
 class IpeDoc:
     def __init__(self, tree):
@@ -233,7 +310,7 @@ class IpeDoc:
 
     @property
     def preamble(self):
-        return self.root.text
+        return self.root.find('preamble').text
 
     @property
     def ipestyle_element(self):
@@ -241,28 +318,40 @@ class IpeDoc:
 
     def construct(self, bitmaps):
         root = ET.Element(self.root.tag, **self.root_attrib)
+        root.text = '\n'
         info = ET.SubElement(root, 'info', **self.info_attrib)
+        info.tail = '\n'
         preamble = ET.SubElement(root, 'preamble')
         preamble.text = self.preamble
+        preamble.tail = '\n'
         for i in sorted(bitmaps.keys()):
             e = bitmaps[i].construct()
-            e['id'] = str(i)
+            e.set('id', str(i))
+            e.tail = '\n'
             root.append(e)
         root.append(self.ipestyle_element)
+        for p in self.pages:
+            e = p.make_page_element(bitmaps)
+            e.tail = '\n'
+            root.append(e)
+
+        for e in root.iter():
+            assert e.text is None or isinstance(e.text, str), type(e.text)
+            for k, v in e.attrib.items():
+                if v is None:
+                    continue
+                if not isinstance(v, str):
+                    raise ValueError((k, v))
+        return root
 
     def save(self, filename):
-        self.root.set('creator', 'vektorrally.py')
-        children = list(self.root)
-        page_children = [c for c in children if c.tag == 'page']
-        for c in page_children:
-            self.root.remove(c)
-        for p in self.pages:
-            self.root.append(p.page_element)
         with open(filename, 'w') as fp:
             fp.write(
                 '<?xml version="1.0"?>\n' +
                 '<!DOCTYPE ipe SYSTEM "ipe.dtd">\n')
-            fp.write(ET.tostring(self.root, encoding='unicode'))
+            fp.write(ET.tostring(self.construct(self.bitmaps),
+                                 encoding='unicode'))
+            fp.write('\n')
 
     @staticmethod
     def extract_style_names(ipestyle_element):
@@ -282,6 +371,10 @@ class IpeDoc:
         for i, page in enumerate(self.pages):
             yield 'Page %d:' % i
             yield from page.describe('  ')
+
+    def split_page_at_view(self, page_idx, view_idx):
+        a, b = self.pages[page_idx].split_at_view(view_idx)
+        self.pages[page_idx:page_idx+1] = [a, b]
 
 
 def parse(filename):
