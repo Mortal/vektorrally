@@ -322,7 +322,11 @@ class IpeDoc:
 
     @property
     def preamble(self):
-        return self.root.find('preamble').text
+        e = self.root.find('preamble')
+        if e is None:
+            return ''
+        else:
+            return e.text
 
     @property
     def ipestyle_element(self):
@@ -333,9 +337,10 @@ class IpeDoc:
         root.text = '\n'
         info = ET.SubElement(root, 'info', **self.info_attrib)
         info.tail = '\n'
-        preamble = ET.SubElement(root, 'preamble')
-        preamble.text = self.preamble
-        preamble.tail = '\n'
+        if self.preamble:
+            preamble = ET.SubElement(root, 'preamble')
+            preamble.text = self.preamble
+            preamble.tail = '\n'
         for i in sorted(bitmaps.keys()):
             e = bitmaps[i].construct()
             e.set('id', str(i))
