@@ -1,6 +1,19 @@
+import re
+
+
 class IpeObject:
-    def __init__(self):
+    def __init__(self, matrix):
         self.layer = None
+        if isinstance(matrix, str):
+            matrix = load_matrix(matrix)
+        self.matrix = matrix
+
+    def transform(self, xy):
+        x, y = xy
+        if self.matrix is None:
+            return (x, y)
+        else:
+            return self.matrix.transform(x, y)
 
 
 class MatrixTransform:
@@ -53,32 +66,27 @@ def load_matrix(data):
 
 
 class Text(IpeObject):
-    def __init__(self, text, attrib):
-        super().__init__()
+    def __init__(self, text, attrib, matrix=None):
         self.text = text
         self.attrib = attrib
-        matrix_data = attrib.get('matrix')
-        self.matrix = None if matrix_data is None else load_matrix(matrix_data)
+        super().__init__(matrix=matrix or attrib.get('matrix'))
 
         x, y = map(float, self.attrib['pos'].split())
-        if self.matrix is None:
-            self.position = (x, y)
-        else:
-            self.position = self.matrix.transform(x, y)
+        self.position = self.transform((x, y))
 
-    @classmethod
-    def parse(cls, text, attrib):
-        return cls(text=text, attrib=attrib)
+    def __repr__(self):
+        return '<Text %r>' % (self.text[:100],)
 
 
 class Image(IpeObject):
-    def __init__(self, bitmap_data, attrib):
+    def __init__(self, bitmap_data, attrib, matrix=None):
         self.data = bitmap_data
         self.attrib = attrib
-
-    @classmethod
-    def parse(cls, bitmap_data, attrib):
-        return cls(bitmap_data, attrib)
+        super().__init__(matrix=matrix or attrib.get('matrix'))
+        x1, y1, x2, y2 = self.attrib['rect'].split()
+        x = (float(x1) + float(x2)) / 2
+        y = (float(y1) + float(y2)) / 2
+        self.position = self.transform((x, y))
 
     @property
     def bitmap_data(self):
@@ -86,21 +94,26 @@ class Image(IpeObject):
 
 
 class Reference(IpeObject):
-    def __init__(self, attrib):
+    def __init__(self, attrib, matrix=None):
         self.attrib = attrib
+        super().__init__(matrix=matrix or attrib.get('matrix'))
+        x, y = map(float, self.attrib.get('pos', '0 0').split())
+        self.position = self.transform((x, y))
 
-    @classmethod
-    def parse(cls, attrib):
-        return cls(attrib)
+    def __repr__(self):
+        name = self.attrib['name']
+        name = re.sub(r'^mark/(.*)\(sx\)', r'\1', name)
+        return '<Reference %s>' % name
 
 
 class Group(IpeObject):
     def __init__(self, children, attrib):
         self.children = children
         self.attrib = attrib
+        super().__init__(matrix=None)
 
 
-parse_text = Text.parse
-parse_image = Image.parse
-parse_use = Reference.parse
+parse_text = Text
+parse_image = Image
+parse_use = Reference
 make_group = Group

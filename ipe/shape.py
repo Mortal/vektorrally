@@ -1,3 +1,4 @@
+import re
 from .object import IpeObject, load_matrix, MatrixTransform
 
 
@@ -16,6 +17,23 @@ class Curve:
 
     def __bool__(self):
         return bool(self.edges)
+
+    @property
+    def mass_middle(self):
+        masses = []
+        mids = []
+        for u, v in self.get_edges():
+            uv = v - u
+            mids.append(u + uv / 2)
+            masses.append(abs(uv))
+        mass = sum(masses)
+        middle = sum(m * (l / mass) for m, l in zip(mids, masses))
+        return mass, middle
+
+    @property
+    def position(self):
+        mass, middle = self.mass_middle
+        return middle.real, middle.imag
 
     @classmethod
     def make_polyline(cls, points):
@@ -77,6 +95,19 @@ class Shape(IpeObject):
     def __repr__(self):
         return "Shape(%r)" % (self.curves,)
 
+    @property
+    def mass_middle(self):
+        masses, mids = zip(*[c.mass_middle for c in self.curves])
+        mass = sum(masses)
+        middle = sum(m * (l / mass) for m, l in zip(mids, masses))
+        return mass, middle
+
+    @property
+    def position(self):
+        mass, middle = self.mass_middle
+        p = self.curves[0].transform_point(middle)
+        return p.real, p.imag
+
     @classmethod
     def make_polyline(cls, points):
         return cls([Curve.make_polyline(points)])
@@ -107,6 +138,14 @@ class OpaqueShape(IpeObject):
     def __init__(self, data, attrib):
         self.data = data
         self.attrib = attrib
+
+    @property
+    def position(self):
+        mo = re.search(r'(\d+\.?\d*) (\d+\.?\d*)', self.data)
+        if not mo:
+            raise ValueError(self.data)
+        x, y = float(mo.group(1)), float(mo.group(2))
+        return x, y
 
 
 def load_shape(data, attrib=None):
@@ -164,6 +203,7 @@ def load_shape(data, attrib=None):
     if not all(curves):
         raise ValueError()
     return Shape(curves)
+
 
 def apply_matrix_to_shape(data, matrix):
     result = ['\n']

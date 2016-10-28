@@ -4,7 +4,7 @@ import ipe.shape
 from ipe.shape import Shape, OpaqueShape
 from ipe.object import (
     parse_text, parse_image, parse_use, make_group,
-    Text, Image, Reference, Group,
+    Text, Image, Reference, Group, MatrixTransform, load_matrix,
 )
 
 
@@ -73,7 +73,7 @@ class IpePage:
                         self.layers.append('alpha')
                     self.current_layer = self.layers[0]
                 # ipefactory.cpp createObject
-                object = self.parse_object(child)
+                object = self.parse_object(child, None)
                 object.layer = self.current_layer
                 self.objects.append(object)
         if not self.views:
@@ -122,15 +122,21 @@ class IpePage:
                 t_abbr = t if len(t) < 70 else (t[:67] + '...')
                 yield indent + '- %s' % t_abbr
 
-    def itertexts(self):
-        def walk(l, g):
-            for o in l:
-                if isinstance(o, Text):
-                    yield (g or o.layer, o)
-                elif isinstance(o, Group):
-                    yield from walk(o.children, g or o.layer)
+    def leaves(self):
+        def walk(xs, layer):
+            for o in xs:
+                if isinstance(o, Group):
+                    yield from walk(o.children, layer or o.layer)
+                else:
+                    yield (layer or o.layer, o)
 
         return walk(self.objects, None)
+
+    def leaf_objects(self):
+        return (o for l, o in self.leaves())
+
+    def itertexts(self):
+        return ((l, o) for l, o in self.leaves() if isinstance(o, Text))
 
     def text_strings(self):
         layer_occurrence = {}
@@ -185,22 +191,27 @@ class IpePage:
     def polygons(self):
         return (o for o in self.objects if o.is_polygon())
 
-    def parse_object(self, child):
+    def parse_object(self, child, matrix):
         if child.tag == 'path':
-            return ipe.shape.load_shape(child.text, child.attrib)
+            return ipe.shape.load_shape(child.text, child.attrib, matrix)
         elif child.tag == 'text':
-            return parse_text(child.text, child.attrib)
+            return parse_text(child.text, child.attrib, matrix)
         elif child.tag == 'image':
             if child.get('bitmap'):
                 bitmap_id = int(child.attrib['bitmap'])
                 bitmap = self.document.bitmaps[bitmap_id]
-                return parse_image(bitmap, child.attrib)
+                return parse_image(bitmap, child.attrib, matrix)
             else:
-                return parse_image(child.text, child.attrib)
+                return parse_image(child.text, child.attrib, matrix)
         elif child.tag == 'use':
-            return parse_use(child.attrib)
+            return parse_use(child.attrib, matrix)
         elif child.tag == 'group':
-            return make_group([self.parse_object(c) for c in child],
+            child_matrix = child.attrib.get('matrix')
+            if matrix or child_matrix:
+                matrix = matrix or MatrixTransform.identity()
+                child_matrix = load_matrix(child_matrix)
+                matrix = child_matrix.and_then(matrix)
+            return make_group([self.parse_object(c, matrix) for c in child],
                               child.attrib)
         else:
             raise Exception("Unknown tag %s" % (child,))
