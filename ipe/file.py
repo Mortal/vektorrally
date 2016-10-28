@@ -192,6 +192,12 @@ class IpePage:
         return (o for o in self.objects if o.is_polygon())
 
     def parse_object(self, child, matrix):
+        child_matrix = child.attrib.get('matrix')
+        if matrix or child_matrix:
+            matrix = matrix or MatrixTransform.identity()
+            child_matrix = (load_matrix(child_matrix) if child_matrix
+                            else MatrixTransform.identity())
+            matrix = child_matrix.and_then(matrix)
         if child.tag == 'path':
             return ipe.shape.load_shape(child.text, child.attrib, matrix)
         elif child.tag == 'text':
@@ -206,11 +212,6 @@ class IpePage:
         elif child.tag == 'use':
             return parse_use(child.attrib, matrix)
         elif child.tag == 'group':
-            child_matrix = child.attrib.get('matrix')
-            if matrix or child_matrix:
-                matrix = matrix or MatrixTransform.identity()
-                child_matrix = load_matrix(child_matrix)
-                matrix = child_matrix.and_then(matrix)
             return make_group([self.parse_object(c, matrix) for c in child],
                               child.attrib)
         else:
@@ -233,7 +234,8 @@ class IpePage:
 
     def make_object_element(self, o, **kwargs):
         if isinstance(o, Shape):
-            e = ET.Element('path')
+            e = ET.Element('path', **o.attrib)
+            # TODO Compute the right matrix. This is wrong.
             if o.matrix:
                 e.set('matrix',
                       ' '.join('%g' % c for c in o.matrix.coefficients))

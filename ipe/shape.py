@@ -35,6 +35,9 @@ class Curve:
         mass, middle = self.mass_middle
         return middle.real, middle.imag
 
+    def move(self, d):
+        self.edges = [(u+d, v+d) for u, v in self.edges]
+
     @classmethod
     def make_polyline(cls, points):
         if not all(isinstance(p, complex) for p in points):
@@ -88,8 +91,8 @@ class Curve:
 
 
 class Shape(IpeObject):
-    def __init__(self, curves):
-        super().__init__()
+    def __init__(self, curves, matrix):
+        super().__init__(matrix=matrix)
         self.curves = curves
 
     def __repr__(self):
@@ -105,18 +108,20 @@ class Shape(IpeObject):
     @property
     def position(self):
         mass, middle = self.mass_middle
-        p = self.curves[0].transform_point(middle)
-        return p.real, p.imag
+        return self.transform((middle.real, middle.imag))
+
+    def move(self, dx, dy):
+        ox, oy = self.reverse_transform((0, 0))
+        ax, ay = self.reverse_transform((dx, dy))
+        print('From %s to %s in world is from %s to %s in object' %
+              ((0, 0), (dx, dy), (ox, oy), (ax, ay)))
+        d = complex(ax - ox, ay - oy)
+        for c in self.curves:
+            c.move(d)
 
     @classmethod
     def make_polyline(cls, points):
         return cls([Curve.make_polyline(points)])
-
-    @property
-    def matrix(self):
-        for c in self.curves:
-            if c.matrix:
-                return c.matrix
 
     def is_line_segment(self):
         return len(self.curves) == 1 and self.curves[0].is_line_segment()
@@ -135,9 +140,10 @@ class Shape(IpeObject):
 
 
 class OpaqueShape(IpeObject):
-    def __init__(self, data, attrib):
+    def __init__(self, data, attrib, matrix):
         self.data = data
         self.attrib = attrib
+        super().__init__(matrix=matrix)
 
     @property
     def position(self):
@@ -145,10 +151,13 @@ class OpaqueShape(IpeObject):
         if not mo:
             raise ValueError(self.data)
         x, y = float(mo.group(1)), float(mo.group(2))
-        return x, y
+        return self.transform((x, y))
+
+    def __repr__(self):
+        return '<OpaqueShape %r>' % re.sub(r'[^a-z]', '', self.data)
 
 
-def load_shape(data, attrib=None):
+def load_shape(data, attrib=None, matrix=None):
     """Load Ipe shape data from a string.
 
     Mirrors ipe/src/ipelib/ipeshape.cpp Shape::load.
@@ -156,8 +165,8 @@ def load_shape(data, attrib=None):
 
     if attrib is None:
         attrib = dict()
-    matrix_data = attrib.get('matrix')
-    matrix = None if matrix_data is None else load_matrix(matrix_data)
+    if matrix is None and attrib.get('matrix'):
+        matrix = load_matrix(attrib.get('matrix'))
 
     curves = []
     args = []  # list of coordinates
@@ -193,7 +202,7 @@ def load_shape(data, attrib=None):
             subpath.append_segment(current_position, v)
             current_position = v
         elif tok in 'e q c a s u'.split():
-            return OpaqueShape(data, attrib)
+            return OpaqueShape(data, attrib, matrix)
         else:
             # Must be a number
             args.append(float(tok))
@@ -202,7 +211,7 @@ def load_shape(data, attrib=None):
         raise ValueError()
     if not all(curves):
         raise ValueError()
-    return Shape(curves)
+    return Shape(curves, matrix)
 
 
 def apply_matrix_to_shape(data, matrix):
