@@ -199,7 +199,11 @@ class IpePage:
                             else MatrixTransform.identity())
             matrix = child_matrix.and_then(matrix)
         if child.tag == 'path':
-            return ipe.shape.load_shape(child.text, child.attrib, matrix)
+            s = ipe.shape.load_shape(child.text, child.attrib, matrix)
+            if child.attrib.get('matrix'):
+                return make_group([s], dict(matrix=child.attrib['matrix']))
+            else:
+                return s
         elif child.tag == 'text':
             return parse_text(child.text, child.attrib, matrix)
         elif child.tag == 'image':
@@ -234,11 +238,11 @@ class IpePage:
 
     def make_object_element(self, o, **kwargs):
         if isinstance(o, Shape):
-            e = ET.Element('path', **o.attrib)
+            e = ET.Element('path')
             # TODO Compute the right matrix. This is wrong.
-            if o.matrix:
-                e.set('matrix',
-                      ' '.join('%g' % c for c in o.matrix.coefficients))
+            # if o.matrix:
+            #     e.set('matrix',
+            #           ' '.join('%g' % c for c in o.matrix.coefficients))
             e.text = '\n' + o.to_ipe_path()
             return e
         elif isinstance(o, OpaqueShape):
