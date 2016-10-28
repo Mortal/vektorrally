@@ -1,6 +1,27 @@
 import re
 
 
+class PositionAttribute:
+    def __get__(self, obj, type=None):
+        x, y = map(float, obj.attrib.get('pos', '0 0').split())
+        return obj.transform((x, y))
+
+    def __set__(self, obj, value):
+        x, y = value
+        obj.attrib['pos'] = '%g %g' % obj.reverse_transform((x, y))
+
+
+class RectPositionAttribute:
+    def __get__(self, obj, type=None):
+        x1, y1, x2, y2 = map(float, obj.attrib['rect'].split())
+        x = (x1 + x2) / 2
+        y = (y1 + y2) / 2
+        return obj.transform((x, y))
+
+    def __set__(self, obj, value):
+        raise AttributeError()
+
+
 class IpeObject:
     def __init__(self, matrix):
         self.layer = None
@@ -8,12 +29,23 @@ class IpeObject:
             matrix = load_matrix(matrix)
         self.matrix = matrix
 
+    def move(self, dx, dy):
+        x, y = self.position
+        self.position = (x + dx, y + dy)
+
     def transform(self, xy):
         x, y = xy
         if self.matrix is None:
             return (x, y)
         else:
             return self.matrix.transform(x, y)
+
+    def reverse_transform(self, xy):
+        x, y = xy
+        if self.matrix is None:
+            return (x, y)
+        else:
+            return self.matrix.inverse_transform(x, y)
 
 
 class MatrixTransform:
@@ -24,6 +56,23 @@ class MatrixTransform:
         a = self.coefficients
         return (a[0] * x1 + a[2] * x2 + a[4],
                 a[1] * x1 + a[3] * x2 + a[5])
+
+    def inverse_transform(self, y1, y2):
+        a = self.coefficients
+        # y1 - a[4] == a[0] * x1 + a[2] * x2
+        # y2 - a[5] == a[1] * x1 + a[3] * x2
+        if a[0]:
+            b = a[1] / a[0]
+            # (y2 - a[5]) - b * (y1 - a[4]) == (a[3] - b * a[2]) * x2
+            # assert a[3] - b * a[2]
+            x2 = ((y2 - a[5]) - b * (y1 - a[4])) / (a[3] - b * a[2])
+            x1 = ((y1 - a[4]) - a[2] * x2) / a[0]
+        else:
+            # assert a[2]
+            x2 = (y1 - a[4]) / a[2]
+            # assert a[1]
+            x1 = (y2 - a[5] - a[3] * x2) / a[1]
+        return x1, x2
 
     def determinant(self):
         a = self.coefficients
@@ -66,27 +115,24 @@ def load_matrix(data):
 
 
 class Text(IpeObject):
+    position = PositionAttribute()
+
     def __init__(self, text, attrib, matrix=None):
         self.text = text
         self.attrib = attrib
         super().__init__(matrix=matrix or attrib.get('matrix'))
-
-        x, y = map(float, self.attrib['pos'].split())
-        self.position = self.transform((x, y))
 
     def __repr__(self):
         return '<Text %r>' % (self.text[:100],)
 
 
 class Image(IpeObject):
+    position = RectPositionAttribute()
+
     def __init__(self, bitmap_data, attrib, matrix=None):
         self.data = bitmap_data
         self.attrib = attrib
         super().__init__(matrix=matrix or attrib.get('matrix'))
-        x1, y1, x2, y2 = self.attrib['rect'].split()
-        x = (float(x1) + float(x2)) / 2
-        y = (float(y1) + float(y2)) / 2
-        self.position = self.transform((x, y))
 
     @property
     def bitmap_data(self):
@@ -94,11 +140,11 @@ class Image(IpeObject):
 
 
 class Reference(IpeObject):
+    position = PositionAttribute()
+
     def __init__(self, attrib, matrix=None):
         self.attrib = attrib
         super().__init__(matrix=matrix or attrib.get('matrix'))
-        x, y = map(float, self.attrib.get('pos', '0 0').split())
-        self.position = self.transform((x, y))
 
     def __repr__(self):
         name = self.attrib['name']
