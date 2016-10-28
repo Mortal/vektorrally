@@ -261,6 +261,7 @@ class IpePage:
             return ET.Element('use', **o.attrib)
         elif isinstance(o, Group):
             e = ET.Element('group', **o.attrib)
+            e.text = '\n'
             for c in o.children:
                 ce = self.make_object_element(c, **kwargs)
                 assert ce is not None
