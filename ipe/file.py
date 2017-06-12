@@ -185,11 +185,11 @@ class IpePage:
 
     @property
     def lines(self):
-        return (o for o in self.objects if o.is_line_segment())
+        return (o for o in self.objects if isinstance(o, Shape) and o.is_line_segment())
 
     @property
     def polygons(self):
-        return (o for o in self.objects if o.is_polygon())
+        return (o for o in self.objects if isinstance(o, Shape) and o.is_polygon())
 
     def parse_object(self, child, matrix):
         child_matrix = child.attrib.get('matrix')
