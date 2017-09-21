@@ -16,7 +16,7 @@ def recursive_apply_matrix(root, matrix):
     elif root.tag == 'group':
         for child in root:
             recursive_apply_matrix(child, matrix)
-    elif root.tag == 'text':
+    elif root.tag in ('text', 'use'):
         x, y = root.attrib['pos'].split()
         x, y = matrix.transform(float(x), float(y))
         root.attrib['pos'] = '%s %s' % (x, y)
