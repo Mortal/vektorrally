@@ -71,6 +71,9 @@ class Curve:
     def is_polygon(self):
         return self.closed
 
+    def is_triangle(self):
+        return self.is_polygon() and len(self.edges) == 2
+
     def endpoints(self):
         return self.transform_edge(self.edges[0])
 
@@ -123,11 +126,17 @@ class Shape(IpeObject):
     def make_polyline(cls, points):
         return cls([Curve.make_polyline(points)])
 
+    @property
     def is_line_segment(self):
         return len(self.curves) == 1 and self.curves[0].is_line_segment()
 
+    @property
     def is_polygon(self):
         return len(self.curves) == 1 and self.curves[0].is_polygon()
+
+    @property
+    def is_triangle(self):
+        return len(self.curves) == 1 and self.curves[0].is_triangle()
 
     def get_edges(self):
         return [e for c in self.curves for e in c.get_edges()]

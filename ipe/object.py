@@ -23,6 +23,14 @@ class RectPositionAttribute:
 
 
 class IpeObject:
+    is_group = False
+    is_image = False
+    is_line_segment = False
+    is_polygon = False
+    is_reference = False
+    is_text = False
+    is_triangle = False
+
     def __init__(self, matrix):
         self.layer = None
         if isinstance(matrix, str):
@@ -115,6 +123,7 @@ def load_matrix(data):
 
 
 class Text(IpeObject):
+    is_text = True
     position = PositionAttribute()
 
     def __init__(self, text, attrib, matrix=None):
@@ -127,6 +136,7 @@ class Text(IpeObject):
 
 
 class Image(IpeObject):
+    is_image = True
     position = RectPositionAttribute()
 
     def __init__(self, bitmap_data, attrib, matrix=None):
@@ -140,6 +150,7 @@ class Image(IpeObject):
 
 
 class Reference(IpeObject):
+    is_reference = True
     position = PositionAttribute()
 
     def __init__(self, attrib, matrix=None):
@@ -153,6 +164,8 @@ class Reference(IpeObject):
 
 
 class Group(IpeObject):
+    is_group = True
+
     def __init__(self, children, attrib):
         self.children = children
         self.attrib = attrib

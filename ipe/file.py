@@ -379,7 +379,7 @@ class IpeDoc:
     @staticmethod
     def extract_style_names(ipestyle_element):
         res = {}
-        for child in ipestyle_element:
+        for child in ipestyle_element or ():
             try:
                 name = child.attrib['name']
             except KeyError:
